@@ -50,6 +50,12 @@ jobs:
           fi
           tail -5 /tmp/prep.log
 
+      - name: Build kernel and generate Module.symvers
+        run: |
+          cd "$KSRC"
+          make ARCH=arm64 LLVM=1 -j"$(nproc)"
+          test -s Module.symvers
+
       - name: Build module
         run: |
           mkdir -p modbuild
