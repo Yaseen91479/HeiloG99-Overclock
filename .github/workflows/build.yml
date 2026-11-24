@@ -14,8 +14,8 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y flex bison bc libssl-dev libelf-dev unzip \
-            dwarves gcc-aarch64-linux-gnu
+          sudo apt-get install -y flex bison bc libssl-dev libelf-dev libdw-dev \
+            zlib1g-dev unzip dwarves gcc-aarch64-linux-gnu
           wget -q https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 19
@@ -30,43 +30,21 @@ jobs:
           mkdir -p ../ksrc
           tar xzf Kernel.tar.gz -C ../ksrc
           tar xzf Platform.tar.gz -C ../ksrc
-          cd ..
-          echo "=== top level of ksrc ==="
-          ls ksrc
 
       - name: Prepare kernel headers
         run: |
-          KSRC=""
-          for d in ksrc/kernel-6.12 $(find ksrc -type f -path '*/scripts/config' | sed 's|/scripts/config$||'); do
-            if [ -f "$d/scripts/config" ] && [ -f "$d/arch/arm64/Kconfig" ] && [ -f "$d/Makefile" ]; then
-              echo "candidate: $d"; head -4 "$d/Makefile" | grep -E 'VERSION|PATCHLEVEL' || true
-              [ -z "$KSRC" ] && KSRC=$(realpath "$d")
-            fi
-          done
-          if [ -z "$KSRC" ]; then
-            echo "NO kernel tree found. Directories:"
-            find ksrc -maxdepth 3 -type d | head -60
-            exit 1
-          fi
+          KSRC=$(realpath ksrc/kernel-6.12)
           echo "KSRC=$KSRC" >> "$GITHUB_ENV"
-          echo "Using: $KSRC"
           cp a07_config "$KSRC/.config"
           cd "$KSRC"
           scripts/config --file .config -d TRIM_UNUSED_KSYMS -d MODULE_SIG_ALL \
             -d HEADERS_INSTALL -d WERROR \
             --set-str UNUSED_KSYMS_WHITELIST ""
-          if ! make ARCH=arm64 LLVM=1 olddefconfig > /tmp/old.log 2>&1; then
-            echo "=== olddefconfig FAILED ==="; tail -40 /tmp/old.log; exit 1
-          fi
-          echo "=== config differences vs device ==="
-          diff <(grep -E '^(CONFIG_|# CONFIG_)' "$GITHUB_WORKSPACE/a07_config" | sort) \
-               <(grep -E '^(CONFIG_|# CONFIG_)' .config | sort) | head -60 || true
+          make ARCH=arm64 LLVM=1 olddefconfig > /tmp/old.log 2>&1 || { tail -40 /tmp/old.log; exit 1; }
           if ! make ARCH=arm64 LLVM=1 modules_prepare -j$(nproc) > /tmp/prep.log 2>&1; then
-            echo "=== modules_prepare failed, retrying single job ==="
             make ARCH=arm64 LLVM=1 modules_prepare -j1 > /tmp/prep2.log 2>&1 || true
             echo "=== ERRORS ==="
             grep -nE "error|\*\*\*|No such file|undefined" /tmp/prep2.log | head -40
-            echo "=== LAST 40 LINES ==="
             tail -40 /tmp/prep2.log
             exit 1
           fi
@@ -78,7 +56,7 @@ jobs:
           cp cpu_oc.c modbuild/
           echo 'obj-m += cpu_oc.o' > modbuild/Kbuild
           KBUILD_MODPOST_WARN=1 make -C "$KSRC" M="$PWD/modbuild" \
-            ARCH=arm64 LLVM=1 modules
+            ARCH=arm64 LLVM=1 modules 2>&1 | tail -60
           ls -la modbuild/*.ko
           modinfo modbuild/cpu_oc.ko || true
 
