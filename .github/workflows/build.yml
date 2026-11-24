@@ -30,33 +30,64 @@ jobs:
           mkdir -p ../ksrc
           tar xzf Kernel.tar.gz -C ../ksrc
           tar xzf Platform.tar.gz -C ../ksrc
+          cd ..
+          echo "=== top level of ksrc ==="
+          ls ksrc
 
       - name: Prepare kernel headers
         run: |
-          echo "=== candidates ==="
-          find ksrc -type f -path '*/scripts/config' | head
-          S=$(find ksrc -type f -path '*/scripts/config' | head -1)
-          if [ -z "$S" ]; then
-            echo "no kernel tree with scripts/config found"
+          KSRC=""
+          for d in ksrc/kernel-6.12 $(find ksrc -type f -path '*/scripts/config' | sed 's|/scripts/config$||'); do
+            if [ -f "$d/scripts/config" ] && [ -f "$d/arch/arm64/Kconfig" ] && [ -f "$d/Makefile" ]; then
+              echo "candidate: $d"; head -4 "$d/Makefile" | grep -E 'VERSION|PATCHLEVEL' || true
+              [ -z "$KSRC" ] && KSRC=$(realpath "$d")
+            fi
+          done
+          if [ -z "$KSRC" ]; then
+            echo "NO kernel tree found. Directories:"
             find ksrc -maxdepth 3 -type d | head -60
             exit 1
           fi
-          KSRC=$(realpath "$(dirname "$(dirname "$S")")")
           echo "KSRC=$KSRC" >> "$GITHUB_ENV"
-          echo "Kernel tree: $KSRC"
-          head -5 "$KSRC/Makefile"
+          echo "Using: $KSRC"
           cp a07_config "$KSRC/.config"
           cd "$KSRC"
           scripts/config --file .config -d TRIM_UNUSED_KSYMS -d MODULE_SIG_ALL \
             -d HEADERS_INSTALL -d WERROR \
             --set-str UNUSED_KSYMS_WHITELIST ""
-          make ARCH=arm64 LLVM=1 olddefconfig
-          echo "=== config differences vs device (should be small) ==="
+          if ! make ARCH=arm64 LLVM=1 olddefconfig > /tmp/old.log 2>&1; then
+            echo "=== olddefconfig FAILED ==="; tail -40 /tmp/old.log; exit 1
+          fi
+          echo "=== config differences vs device ==="
           diff <(grep -E '^(CONFIG_|# CONFIG_)' "$GITHUB_WORKSPACE/a07_config" | sort) \
                <(grep -E '^(CONFIG_|# CONFIG_)' .config | sort) | head -60 || true
           if ! make ARCH=arm64 LLVM=1 modules_prepare -j$(nproc) > /tmp/prep.log 2>&1; then
-            echo "=== parallel build failed, retrying single job to find the error ==="
+            echo "=== modules_prepare failed, retrying single job ==="
             make ARCH=arm64 LLVM=1 modules_prepare -j1 > /tmp/prep2.log 2>&1 || true
             echo "=== ERRORS ==="
-            grep -nE "error|Error|\*\*\*|No such file|undefined" /tmp/prep2.log | head -40
-            echo "==
+            grep -nE "error|\*\*\*|No such file|undefined" /tmp/prep2.log | head -40
+            echo "=== LAST 40 LINES ==="
+            tail -40 /tmp/prep2.log
+            exit 1
+          fi
+          tail -5 /tmp/prep.log
+
+      - name: Build module
+        run: |
+          mkdir -p modbuild
+          cp cpu_oc.c modbuild/
+          echo 'obj-m += cpu_oc.o' > modbuild/Kbuild
+          KBUILD_MODPOST_WARN=1 make -C "$KSRC" M="$PWD/modbuild" \
+            ARCH=arm64 LLVM=1 modules
+          ls -la modbuild/*.ko
+          modinfo modbuild/cpu_oc.ko || true
+
+      - name: Build loader
+        run: aarch64-linux-gnu-gcc -static -O2 loader.c -o loader
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpu-oc
+          path: |
+            modbuild/cpu_oc.ko
+            loader
