@@ -26,15 +26,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download "$RELEASE_TAG" -p "$ASSET" -D dl
-          cd dl && unzip -q "$ASSET" && ls -la
+          cd dl && unzip -q "$ASSET"
           mkdir -p ../ksrc
-          for f in *.tar.gz; do tar xzf "$f" -C ../ksrc; done
+          tar xzf Kernel.tar.gz -C ../ksrc
 
       - name: Prepare kernel headers
         run: |
-          A=$(find ksrc -type d -path '*/arch/arm64' | head -1)
-          KSRC=$(realpath "${A%/arch/arm64}")
+          KSRC=$(realpath ksrc/kernel-6.12)
+          if [ ! -x "$KSRC/scripts/config" ]; then
+            echo "kernel-6.12 not found, listing:"
+            find ksrc -maxdepth 3 -type d | head -60
+            exit 1
+          fi
           echo "KSRC=$KSRC" >> "$GITHUB_ENV"
+          echo "Kernel tree: $KSRC"
+          head -5 "$KSRC/Makefile"
           cp a07_config "$KSRC/.config"
           cd "$KSRC"
           scripts/config --file .config -d TRIM_UNUSED_KSYMS -d MODULE_SIG_ALL \
