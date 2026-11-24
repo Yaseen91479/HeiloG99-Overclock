@@ -4,6 +4,7 @@ on: workflow_dispatch
 env:
   RELEASE_TAG: kernel-src
   ASSET: SM-A075F_16_Opensource.zip
+  KREL: 6.12.69-android16-6-abA075FXXU7DZJ5-4k   # = uname -r on the phone
 
 jobs:
   build:
@@ -11,17 +12,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore prepared kernel tree
+        id: kcache
+        uses: actions/cache/restore@v4
+        with:
+          path: ksrc/kernel-6.12
+          key: ktree-${{ hashFiles('a07_config') }}-clang19-krel-v3
+
       - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev libdw-dev \
-            zlib1g-dev unzip dwarves gcc-aarch64-linux-gnu
-          wget -q https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 19
+            zlib1g-dev unzip dwarves binutils
+          if ! sudo apt-get install -y clang-19 lld-19 llvm-19; then
+            wget -q https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh 19
+          fi
           echo "/usr/lib/llvm-19/bin" >> "$GITHUB_PATH"
 
       - name: Fetch kernel source from the release
+        if: steps.kcache.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -32,40 +43,73 @@ jobs:
           tar xzf Platform.tar.gz -C ../ksrc
 
       - name: Prepare kernel headers
+        if: steps.kcache.outputs.cache-hit != 'true'
         run: |
           KSRC=$(realpath ksrc/kernel-6.12)
-          echo "KSRC=$KSRC" >> "$GITHUB_ENV"
           cp a07_config "$KSRC/.config"
           cd "$KSRC"
           scripts/config --file .config -d TRIM_UNUSED_KSYMS -d MODULE_SIG_ALL \
             -d HEADERS_INSTALL -d WERROR \
             --set-str UNUSED_KSYMS_WHITELIST ""
-          make ARCH=arm64 LLVM=1 olddefconfig > /tmp/old.log 2>&1 || { tail -40 /tmp/old.log; exit 1; }
-          if ! make ARCH=arm64 LLVM=1 modules_prepare -j$(nproc) > /tmp/prep.log 2>&1; then
-            make ARCH=arm64 LLVM=1 modules_prepare -j1 > /tmp/prep2.log 2>&1 || true
+          make ARCH=arm64 LLVM=1 KERNELRELEASE="$KREL" olddefconfig > /tmp/old.log 2>&1 || { tail -40 /tmp/old.log; exit 1; }
+          if ! make ARCH=arm64 LLVM=1 KERNELRELEASE="$KREL" modules_prepare -j$(nproc) > /tmp/prep.log 2>&1; then
+            make ARCH=arm64 LLVM=1 KERNELRELEASE="$KREL" modules_prepare -j1 > /tmp/prep2.log 2>&1 || true
             echo "=== ERRORS ==="
             grep -nE "error|\*\*\*|No such file|undefined" /tmp/prep2.log | head -40
             tail -40 /tmp/prep2.log
             exit 1
           fi
           tail -5 /tmp/prep.log
+          grep UTS_RELEASE include/generated/utsrelease.h
+
+      - name: Save prepared kernel tree to cache
+        if: steps.kcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ksrc/kernel-6.12
+          key: ktree-${{ hashFiles('a07_config') }}-clang19-krel-v3
 
       - name: Build module
         run: |
+          KSRC="$GITHUB_WORKSPACE/ksrc/kernel-6.12"
+          test -x "$KSRC/scripts/config" || { echo "CACHE OR TREE BROKEN"; exit 1; }
+          test -s device.symvers || { echo "device.symvers missing in repo root"; exit 1; }
+          grep -c . device.symvers
+          grep -P '\tmodule_layout\t' device.symvers || echo "WARNING: module_layout not in device.symvers"
+          cp device.symvers "$KSRC/Module.symvers"
           mkdir -p modbuild
           cp cpu_oc.c modbuild/
           echo 'obj-m += cpu_oc.o' > modbuild/Kbuild
-          KBUILD_MODPOST_WARN=1 make -C "$KSRC" M="$PWD/modbuild" \
-            ARCH=arm64 LLVM=1 modules 2>&1 | tail -60
-          ls -la modbuild/*.ko
-          modinfo modbuild/cpu_oc.ko || true
-
-      - name: Build loader
-        run: aarch64-linux-gnu-gcc -static -O2 loader.c -o loader
+          KBUILD_MODPOST_WARN=1 make -C "$KSRC" M="$GITHUB_WORKSPACE/modbuild" \
+            ARCH=arm64 LLVM=1 KERNELRELEASE="$KREL" modules > /tmp/mod.log 2>&1 || {
+              echo "=== BUILD FAILED ==="; tail -40 /tmp/mod.log
+              echo "=== mod.c ==="; sed -n 1,60p modbuild/cpu_oc.mod.c; exit 1; }
+          tail -15 /tmp/mod.log
+          ls -la modbuild/cpu_oc.ko
+          {
+            echo "=== modinfo ==="; modinfo modbuild/cpu_oc.ko
+            echo "=== undefined symbols ==="; llvm-nm -u modbuild/cpu_oc.ko
+          } > diag.txt 2>&1 || true
+          cat diag.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: cpu-oc
           path: |
             modbuild/cpu_oc.ko
-            loader
+            diag.txt
+
+  loader:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build loader
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          aarch64-linux-gnu-gcc -static -O2 loader.c -o loader
+          ls -la loader
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loader
+          path: loader
