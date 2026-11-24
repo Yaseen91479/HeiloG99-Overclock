@@ -44,12 +44,22 @@ jobs:
           cp a07_config "$KSRC/.config"
           cd "$KSRC"
           scripts/config --file .config -d TRIM_UNUSED_KSYMS -d MODULE_SIG_ALL \
+            -d HEADERS_INSTALL -d WERROR \
             --set-str UNUSED_KSYMS_WHITELIST ""
           make ARCH=arm64 LLVM=1 olddefconfig
           echo "=== config differences vs device (should be small) ==="
           diff <(grep -E '^(CONFIG_|# CONFIG_)' "$GITHUB_WORKSPACE/a07_config" | sort) \
                <(grep -E '^(CONFIG_|# CONFIG_)' .config | sort) | head -60 || true
-          make ARCH=arm64 LLVM=1 modules_prepare -j$(nproc)
+          if ! make ARCH=arm64 LLVM=1 modules_prepare -j$(nproc) > /tmp/prep.log 2>&1; then
+            echo "=== parallel build failed, retrying single job to find the error ==="
+            make ARCH=arm64 LLVM=1 modules_prepare -j1 > /tmp/prep2.log 2>&1 || true
+            echo "=== ERRORS ==="
+            grep -nE "error|Error|\*\*\*|No such file|undefined" /tmp/prep2.log | head -40
+            echo "=== LAST 40 LINES ==="
+            tail -40 /tmp/prep2.log
+            exit 1
+          fi
+          tail -5 /tmp/prep.log
 
       - name: Build module
         run: |
