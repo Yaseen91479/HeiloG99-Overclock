@@ -16,6 +16,7 @@
 #include <linux/pm_qos.h>
 #include <linux/plist.h>
 #include <linux/io.h>
+#include <linux/workqueue.h>
 
 #define LUT_ROWS	32
 #define LUT_SIZE	0x120
@@ -24,17 +25,25 @@
 #define MAX_STEP_KHZ	400000		/* safety: refuse bigger jumps */
 
 static bool apply;
-static ulong little_khz, big_khz, a_get, a_put, a_qos;
+static ulong little_khz, big_khz, a_get, a_put, a_qos, a_addn, a_remn;
+static uint resets;		/* how many times something lowered a request back */
+module_param(resets, uint, 0444);
 module_param(apply, bool, 0444);
 module_param(little_khz, ulong, 0444);
 module_param(big_khz, ulong, 0444);
 module_param(a_get, ulong, 0444);
 module_param(a_put, ulong, 0444);
 module_param(a_qos, ulong, 0444);
+module_param(a_addn, ulong, 0444);
+module_param(a_remn, ulong, 0444);
 
 static struct cpufreq_policy *(*p_get)(unsigned int cpu);
 static void (*p_put)(struct cpufreq_policy *policy);
 static int (*p_qos)(struct freq_qos_request *req, s32 value);
+static int (*p_addn)(struct freq_constraints *qos, enum freq_qos_req_type type,
+		     struct notifier_block *nb);
+static int (*p_remn)(struct freq_constraints *qos, enum freq_qos_req_type type,
+		     struct notifier_block *nb);
 
 struct dom {
 	int cpu;
@@ -47,6 +56,8 @@ struct dom {
 	int lut_row;
 	u32 lut_orig;
 	bool applied;
+	bool nb_on;
+	struct notifier_block nb;
 };
 
 static struct dom doms[2] = {
@@ -70,16 +81,45 @@ static int collect(struct cpufreq_policy *p, s32 prio,
 	return n;
 }
 
-static void retarget(struct cpufreq_policy *p, s32 from, s32 to)
+static int retarget(struct cpufreq_policy *p, s32 from, s32 to,
+		    bool skip_user, bool quiet)
 {
 	struct freq_qos_request *reqs[MAX_REQ];
-	int i, n = collect(p, from, reqs, false);
+	int i, done = 0, n = collect(p, from, reqs, false);
 
 	for (i = 0; i < n; i++) {
-		int ret = p_qos(reqs[i], to);
+		int ret;
 
-		pr_info("  qos %px %d -> %d (ret=%d)\n", reqs[i], from, to, ret);
+		if (skip_user && reqs[i] == p->max_freq_req)
+			continue;
+		ret = p_qos(reqs[i], to);
+		done++;
+		if (!quiet)
+			pr_info("  qos %px %d -> %d (ret=%d)\n", reqs[i], from, to, ret);
 	}
+	return done;
+}
+
+static struct work_struct fix_work;
+
+/* Whoever lowers a request back to the stock max (the power HAL through
+ * powerhal_cpu_ctrl) is not touched; we only react when the effective max
+ * changes. No polling: the notifier only queues a tiny work item. */
+static void fix_fn(struct work_struct *w)
+{
+	int i;
+
+	for (i = 0; i < 2; i++)
+		if (doms[i].applied &&
+		    retarget(doms[i].pol, doms[i].old_khz, *doms[i].new_khz,
+			     true, true))
+			resets++;
+}
+
+static int oc_notify(struct notifier_block *nb, unsigned long val, void *data)
+{
+	schedule_work(&fix_work);
+	return NOTIFY_OK;
 }
 
 static int dom_setup(struct dom *d)
@@ -136,8 +176,13 @@ static int dom_setup(struct dom *d)
 	}
 	d->ent->frequency = newk;
 	p->cpuinfo.max_freq = newk;
-	retarget(p, d->old_khz, newk);
+	retarget(p, d->old_khz, newk, false, false);
 	d->applied = true;
+	if (p_addn && p_remn) {
+		d->nb.notifier_call = oc_notify;
+		if (!p_addn(&p->constraints, FREQ_QOS_MAX, &d->nb))
+			d->nb_on = true;
+	}
 	pr_info("cpu%d: applied %u -> %lu kHz (lut row %d)\n",
 		d->cpu, d->old_khz, newk, d->lut_row);
 	return 0;
@@ -148,7 +193,7 @@ static void dom_restore(struct dom *d)
 	if (!d->pol)
 		return;
 	if (d->applied) {
-		retarget(d->pol, *d->new_khz, d->old_khz);
+		retarget(d->pol, *d->new_khz, d->old_khz, false, false);
 		d->ent->frequency = d->old_khz;
 		d->pol->cpuinfo.max_freq = d->old_khz;
 		if (d->lut && d->lut_row >= 0)
@@ -170,6 +215,11 @@ static int __init oc_init(void)
 	p_get = (void *)a_get;
 	p_put = (void *)a_put;
 	p_qos = (void *)a_qos;
+	if (a_addn && a_remn) {
+		p_addn = (void *)a_addn;
+		p_remn = (void *)a_remn;
+	}
+	INIT_WORK(&fix_work, fix_fn);
 
 	pr_info("apply=%d little=%lu big=%lu\n", apply, little_khz, big_khz);
 	for (i = 0; i < 2; i++)
@@ -181,9 +231,15 @@ static void __exit oc_exit(void)
 {
 	int i;
 
+	for (i = 0; i < 2; i++)
+		if (doms[i].nb_on) {
+			p_remn(&doms[i].pol->constraints, FREQ_QOS_MAX, &doms[i].nb);
+			doms[i].nb_on = false;
+		}
+	cancel_work_sync(&fix_work);
 	for (i = 1; i >= 0; i--)
 		dom_restore(&doms[i]);
-	pr_info("restored\n");
+	pr_info("restored (requests lowered back %u times)\n", resets);
 }
 
 module_init(oc_init);
