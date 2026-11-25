@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10131b">
+  <title>Helio G99 Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131b;
+      --panel: #191e2a;
+      --panel2: #202737;
+      --line: #2c3547;
+      --text: #f2f5fb;
+      --muted: #9ba8bc;
+      --accent: #8b9cff;
+      --green: #75d6a2;
+      --amber: #f2c477;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    }
+    .app { max-width: 620px; margin: 0 auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 8px 2px 22px; }
+    h1 { font-size: 21px; margin:0; letter-spacing:-.5px; }
+    .sub { color:var(--muted); font-size:12px; margin-top:4px; }
+    .version { color:var(--accent); background:#252d46; padding:7px 10px; border-radius:99px; font-size:11px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; }
+    .tile { text-align:left; color:inherit; width:100%; cursor:pointer; transition:transform .15s,border-color .15s; }
+    .tile:active { transform:scale(.985); }
+    .tile:hover { border-color:#58658b; }
+    .tile-head { display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:13px; }
+    .glyph { display:grid; place-items:center; width:38px; height:38px; border-radius:13px; background:var(--panel2); color:var(--accent); font-size:19px; }
+    .metric { font-size:25px; font-weight:700; margin-top:17px; letter-spacing:-.8px; }
+    .hint { color:var(--muted); font-size:12px; margin-top:3px; }
+    .section { margin-top:14px; }
+    .section-title { font-size:14px; font-weight:650; margin:0 0 11px 2px; }
+    .rows { display:grid; gap:0; }
+    .readout { display:flex; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+    .readout:last-child { border-bottom:0; }
+    .readout span:first-child { color:var(--muted); }
+    .value { font-variant-numeric:tabular-nums; font-weight:650; }
+    .status { display:flex; align-items:center; gap:8px; color:var(--amber); font-size:12px; }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--amber); }
+    .module-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
+    .module-row + .module-row { border-top:1px solid var(--line); }
+    .pill { font-size:11px; padding:5px 9px; border-radius:99px; color:var(--muted); background:var(--panel2); }
+    .page { display:none; }
+    .page.active { display:block; }
+    .back { border:0; color:var(--accent); background:transparent; padding:8px 0 16px; font:inherit; cursor:pointer; }
+    .hero { padding:20px; background:linear-gradient(145deg,#242d49,#191e2a 70%); border:1px solid #384360; border-radius:var(--radius); }
+    .hero h2 { margin:0 0 5px; font-size:20px; }
+    .hero p { margin:0; color:var(--muted); font-size:12px; }
+    .option { margin-top:11px; padding:15px; background:var(--panel); border:1px solid var(--line); border-radius:16px; }
+    .option strong { display:block; font-size:14px; }
+    .option p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+    .notice { color:var(--amber); font-size:12px; margin-top:14px; padding:12px; background:#332a1c; border-radius:13px; }
+    footer { color:#778398; font-size:11px; text-align:center; margin:22px 0 4px; }
+    @media (max-width:380px) { .grid { gap:9px; } .card { padding:13px; } .metric { font-size:22px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="home" class="page active">
+      <header>
+        <div><h1>Helio G99 Control</h1><div class="sub">KernelSU control dashboard</div></div>
+        <span class="version">v0.1.0</span>
+      </header>
+
+      <div class="grid">
+        <button class="card tile" type="button" aria-label="CPU information">
+          <div class="tile-head"><span>CPU</span><span class="glyph">◈</span></div>
+          <div class="metric">-- GHz</div>
+          <div class="hint">Frequency unavailable</div>
+        </button>
+        <button class="card tile" type="button" id="open-gpu" aria-label="Open GPU options">
+          <div class="tile-head"><span>GPU</span><span class="glyph">▦</span></div>
+          <div class="metric">GPU</div>
+          <div class="hint">Open GPU controls <span aria-hidden="true">→</span></div>
+        </button>
+      </div>
+
+      <section class="section card">
+        <h2 class="section-title">Live readings</h2>
+        <div class="rows">
+          <div class="readout"><span>CPU temperature</span><span class="value">-- °C</span></div>
+          <div class="readout"><span>GPU frequency</span><span class="value">-- MHz</span></div>
+          <div class="readout"><span>RAM usage</span><span class="value">-- GB</span></div>
+        </div>
+        <div class="status"><i class="dot"></i><span>Waiting for device connection</span></div>
+      </section>
+
+      <section class="section card">
+        <h2 class="section-title">Kernel modules</h2>
+        <div class="module-row"><span>CPU module</span><span class="pill">Not checked</span></div>
+        <div class="module-row"><span>GPU module</span><span class="pill">Not checked</span></div>
+      </section>
+      <footer>Readings will appear after the KernelSU bridge is connected.</footer>
+    </section>
+
+    <section id="gpu-page" class="page">
+      <button class="back" id="back-home" type="button">← Dashboard</button>
+      <div class="hero">
+        <h2>GPU controls</h2>
+        <p>Mali-G57 MC2 · Helio G99</p>
+      </div>
+      <div class="option">
+        <strong>GPU module status</strong>
+        <p>Not connected yet. The next step is to verify the module state from the device.</p>
+      </div>
+      <div class="option">
+        <strong>GPU readings</strong>
+        <p>Current frequency and available operating points will be shown when a reliable read-only source is connected.</p>
+      </div>
+      <div class="option">
+        <strong>Apply settings</strong>
+        <p>Controls will be added after the existing loader and module parameters are verified. No tuning command is executed by this preview.</p>
+      </div>
+      <div class="notice">Settings are not active in this initial interface. This page is a UI scaffold only.</div>
+    </section>
+  </main>
+  <script>
+    const home = document.getElementById('home');
+    const gpuPage = document.getElementById('gpu-page');
+    document.getElementById('open-gpu').addEventListener('click', () => {
+      home.classList.remove('active');
+      gpuPage.classList.add('active');
+      window.scrollTo(0, 0);
+    });
+    document.getElementById('back-home').addEventListener('click', () => {
+      gpuPage.classList.remove('active');
+      home.classList.add('active');
+      window.scrollTo(0, 0);
+    });
+  </script>
+</body>
+</html>
