@@ -10,7 +10,15 @@ function updatePreviewSlider(sliderId, valueId, warningId, threshold) {
 }
 $('little-slider').addEventListener('input', () => updatePreviewSlider('little-slider','little-selected','little-warning',2300));
 $('big-slider').addEventListener('input', () => updatePreviewSlider('big-slider','big-selected','big-warning',2500));
-$('gpu-slider').addEventListener('input', () => show('gpu-selected', Number($('gpu-slider').value) + ' MHz'));
+const GPU_OPP_MHZ = [1100, 1086, 1072, 1058, 1045, 1031, 1017, 1003, 990, 976, 962, 948, 935, 921, 907, 893, 880, 868, 857, 846, 835, 823, 812, 801, 790, 778, 767, 756, 745, 733, 722, 711, 700, 674, 648, 622, 596, 570, 545, 519, 493, 467, 441, 415, 390];
+function updateGpuPreview() {
+  const index = Number($('gpu-slider').value);
+  show('gpu-selected', GPU_OPP_MHZ[index] + ' MHz · OPP ' + index);
+  show('gpu-lock-preview-status', $('gpu-lock-preview').checked ? 'Fixed-target option selected · preview only' : 'Dynamic GPU frequency · preview only');
+}
+$('gpu-slider').addEventListener('input', updateGpuPreview);
+$('gpu-lock-preview').addEventListener('change', updateGpuPreview);
+updateGpuPreview();
 updatePreviewSlider('little-slider','little-selected','little-warning',2300);
 updatePreviewSlider('big-slider','big-selected','big-warning',2500);
 async function read(command) {
