@@ -160,7 +160,7 @@ async function unloadCpuModule() {
 }
 
 async function getStockCpuMaxima() {
-  const raw = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/scaling_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+  const raw = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
   const values = Object.fromEntries(raw.split(/\r?\n/).filter(Boolean).map(line => {
     const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
   }));
@@ -194,7 +194,7 @@ async function loadCpuModule() {
   const result = await exec(command);
   if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
 
-  const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/scaling_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+  const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
   const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
     const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
   }));
