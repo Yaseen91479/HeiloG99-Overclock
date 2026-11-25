@@ -140,6 +140,14 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){stopGpuMon
 const CPU_MODULE_DIR = '/data/adb/modules/heilog99_control';
 let cpuActionBusy = false;
 
+async function ensureLoaderExecutable() {
+  const path = CPU_MODULE_DIR + '/loader';
+  const result = await exec('chmod 0755 ' + path + ' && test -x ' + path);
+  if (!result || result.errno !== 0) {
+    throw new Error(result?.stderr || 'Could not set loader executable permission');
+  }
+}
+
 function setCpuControlState(loaded) {
   const toggle = $('cpu-toggle');
   if (!toggle) return;
@@ -154,6 +162,7 @@ async function cpuModuleLoaded() {
 
 async function unloadCpuModule() {
   if (!(await cpuModuleLoaded())) return;
+  await ensureLoaderExecutable();
   const result = await exec(CPU_MODULE_DIR + '/loader -r cpu_oc');
   if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Could not unload cpu_oc');
   if (await cpuModuleLoaded()) throw new Error('cpu_oc is still loaded after unload');
@@ -189,6 +198,7 @@ async function loadCpuModule() {
       (stock.policy6 / 1000).toFixed(0) + '–' + ((stock.policy6 + 400000) / 1000).toFixed(0) + ' MHz)');
   }
 
+  await ensureLoaderExecutable();
   const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
     '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
   const result = await exec(command);
