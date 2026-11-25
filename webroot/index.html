@@ -46,9 +46,9 @@
 <div class="control-preview" aria-label="CPU control layout preview">
   <div class="control-head"><div><strong>Overclock controls</strong><div class="small">Layout preview · not connected to the kernel</div></div><div class="switch-preview" aria-hidden="true"></div></div>
   <div class="readout"><span>Master switch</span><span class="pill">OFF · preview only</span></div>
-  <div class="freq-row"><div class="freq-label"><strong>Little cores · CPUs 0–5</strong><span class="freq-value">500–2800 MHz</span></div><input class="freq-range" type="range" min="500" max="2800" value="2000" disabled><div class="range-ends"><span>500 MHz</span><span>2800 MHz</span></div></div>
-  <div class="freq-row"><div class="freq-label"><strong>Big cores · CPUs 6–7</strong><span class="freq-value">750–3000 MHz</span></div><input class="freq-range" type="range" min="750" max="3000" value="2200" disabled><div class="range-ends"><span>750 MHz</span><span>3000 MHz</span></div></div>
-  <div class="confirm-preview"><strong>Frequency caution thresholds</strong><p>Little: above 2300 MHz — show a high-frequency warning.</p><p>Big: above 2500 MHz — show a high-frequency warning.</p><p>These are caution thresholds only, not verified safe operating limits. The preview is disabled and cannot apply a frequency.</p></div>
+  <div class="freq-row"><div class="freq-label"><strong>Little cores · CPUs 0–5</strong><span class="freq-value" id="little-selected">2000 MHz</span></div><input class="freq-range" id="little-slider" type="range" min="500" max="2800" step="25" value="2000" aria-label="Little preview frequency"><div class="range-ends"><span>500 MHz</span><span>2800 MHz</span></div></div>
+  <div class="freq-row"><div class="freq-label"><strong>Big cores · CPUs 6–7</strong><span class="freq-value" id="big-selected">2200 MHz</span></div><input class="freq-range" id="big-slider" type="range" min="750" max="3000" step="25" value="2200" aria-label="Big preview frequency"><div class="range-ends"><span>750 MHz</span><span>3000 MHz</span></div></div>
+  <div class="confirm-preview" id="little-warning" hidden><strong>Little frequency warning</strong><p>Selected value is above 2300 MHz. This is a caution threshold, not a verified safe limit.</p></div>\n  <div class="confirm-preview" id="big-warning" hidden><strong>Big frequency warning</strong><p>Selected value is above 2500 MHz. This is a caution threshold, not a verified safe limit.</p></div>\n  <p class="small">Sliders are interactive previews only. They update the displayed selection and warnings; they do not communicate with KernelSU or change CPU settings.</p>
   <button class="disabled-action" type="button" disabled>Apply settings · unavailable</button>
   <p class="small">OFF is shown as the requested design state only. Unloading the kernel module or restoring kernel settings is not implemented here.</p>
 </div></section>
@@ -66,6 +66,16 @@ import { exec } from 'kernelsu';
 
 const $ = (id) => document.getElementById(id);
 const show = (id, value) => { $(id).textContent = value; };
+function updatePreviewSlider(sliderId, valueId, warningId, threshold) {
+  const slider = $(sliderId);
+  const value = Number(slider.value);
+  show(valueId, value + ' MHz');
+  $(warningId).hidden = value <= threshold;
+}
+$('little-slider').addEventListener('input', () => updatePreviewSlider('little-slider','little-selected','little-warning',2300));
+$('big-slider').addEventListener('input', () => updatePreviewSlider('big-slider','big-selected','big-warning',2500));
+updatePreviewSlider('little-slider','little-selected','little-warning',2300);
+updatePreviewSlider('big-slider','big-selected','big-warning',2500);
 async function read(command) {
   const result = await exec(command);
   if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Command failed');
