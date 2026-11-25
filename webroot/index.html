@@ -33,8 +33,10 @@
 <section id="gpu-page" class="page"><button class="back" id="back-home" type="button">← Dashboard</button>
 <div class="hero"><h2>GPU monitor</h2><p>Mali-G57 MC2 · Helio G99</p></div>
 <div class="option"><strong>Module status</strong><p id="gpu-page-status">Checking kernel module list…</p></div>
-<div class="option"><strong>Current GPU frequency</strong><p id="gpu-page-freq">No verified read-only frequency path has been identified for this kernel yet.</p></div>
-<div class="option"><strong>GPU operating-point table</strong><p>Not displayed until a reliable, device-specific read-only interface is confirmed.</p></div>
+<div class="option"><strong>Current GPU frequency</strong><p id="gpu-page-freq">Waiting for GPU page…</p></div>
+<div class="option"><strong>Frequency range</strong><p id="gpu-page-range">--</p></div>
+<div class="option"><strong>Governor</strong><p id="gpu-page-governor">--</p></div>
+<div class="small" id="gpu-page-updated">Updates only while this page is open.</div>
 <div class="notice">This page is monitoring-only. It does not apply overclock settings or write to kernel interfaces.</div></section>
 </main>
 <script type="module">
@@ -88,8 +90,36 @@ async function refresh() {
     show('cpu-hint','Open this page inside a compatible KernelSU Manager WebUI');
   }
 }
-$('open-gpu').addEventListener('click',()=>{$('home').classList.remove('active');$('gpu-page').classList.add('active');window.scrollTo(0,0);});
-$('back-home').addEventListener('click',()=>{$('gpu-page').classList.remove('active');$('home').classList.add('active');window.scrollTo(0,0);});
+let gpuTimer = null;
+async function refreshGpu() {
+  if (!$('gpu-page').classList.contains('active') || document.hidden) return;
+  try {
+    const raw = await read("P=/sys/class/devfreq/13000000.mali; for f in cur_freq min_freq max_freq governor; do [ -r \"$P/$f\" ] && printf '%s:%s\\n' \"$f\" \"$(cat \"$P/$f\")\"; done");
+    const values = Object.fromEntries(raw.split('\\n').filter(Boolean).map(line => {
+      const i = line.indexOf(':'); return [line.slice(0,i),line.slice(i+1)];
+    }));
+    const mhz = value => Number.isFinite(Number(value)) ? (Number(value)/1000000).toFixed(0)+' MHz' : '--';
+    show('gpu-page-freq', values.cur_freq ? mhz(values.cur_freq) : 'Unavailable');
+    show('gpu-page-range', values.min_freq && values.max_freq ? mhz(values.min_freq)+' – '+mhz(values.max_freq) : 'Unavailable');
+    show('gpu-page-governor', values.governor || 'Unavailable');
+    show('gpu-page-updated','Live · refreshed '+new Date().toLocaleTimeString()+' · pauses when this page is closed or hidden');
+  } catch (error) {
+    show('gpu-page-freq','Read failed: '+(error?.message || 'unknown error'));
+    show('gpu-page-updated','GPU readings unavailable');
+  }
+}
+function startGpuMonitor() {
+  if (gpuTimer !== null || document.hidden) return;
+  refreshGpu();
+  gpuTimer = setInterval(refreshGpu,1000);
+}
+function stopGpuMonitor() {
+  if (gpuTimer !== null) clearInterval(gpuTimer);
+  gpuTimer = null;
+}
+$('open-gpu').addEventListener('click',()=>{$('home').classList.remove('active');$('gpu-page').classList.add('active');window.scrollTo(0,0);startGpuMonitor();});
+$('back-home').addEventListener('click',()=>{$('gpu-page').classList.remove('active');$('home').classList.add('active');stopGpuMonitor();window.scrollTo(0,0);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden) stopGpuMonitor(); else if($('gpu-page').classList.contains('active')) startGpuMonitor();});
 $('refresh').addEventListener('click',refresh);
 $('cpu-tile').addEventListener('click',()=>document.querySelector('.section.card').scrollIntoView({behavior:'smooth'}));
 refresh();
