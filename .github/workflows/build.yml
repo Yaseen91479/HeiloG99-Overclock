@@ -138,6 +138,7 @@ jobs:
           set -euo pipefail
           mkdir -p package/META-INF/com/google/android
           cp module.prop package/module.prop
+          cp service.sh package/service.sh
           cp -R webroot package/webroot
           cp artifacts/cpu-oc/modbuild/cpu_oc.ko package/cpu_oc.ko
           cp artifacts/loader/loader package/loader
@@ -171,14 +172,16 @@ jobs:
 
           ui_print "Installing Helio G99 Control WebUI"
           mkdir -p "$MODPATH" || abort "Cannot create module directory"
-          unzip -o "$ZIPFILE" "module.prop" "webroot/*" "cpu_oc.ko" "loader" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
+          unzip -o "$ZIPFILE" "module.prop" "service.sh" "webroot/*" "cpu_oc.ko" "loader" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
           [ -s "$MODPATH/module.prop" ] || abort "module.prop missing"
+          [ -s "$MODPATH/service.sh" ] || abort "service.sh missing"
           [ -s "$MODPATH/webroot/index.html" ] || abort "webroot/index.html missing"
           [ -s "$MODPATH/cpu_oc.ko" ] || abort "cpu_oc.ko missing"
           [ -s "$MODPATH/loader" ] || abort "loader missing"
           find "$MODPATH" -type d -exec chmod 0755 {} \; 2>/dev/null
           find "$MODPATH" -type f -exec chmod 0644 {} \; 2>/dev/null
           chmod 0755 "$MODPATH/loader" || abort "Cannot make loader executable"
+          chmod 0755 "$MODPATH/service.sh" || abort "Cannot make service executable"
           ui_print "Installed dashboard, CPU module, and loader."
           ui_print "CPU OC remains OFF until enabled from the CPU page."
           exit 0
