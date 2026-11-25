@@ -154,7 +154,7 @@ async function restoreCpuFrequencyLock() {
 
 async function saveCpuFrequencyState() {
   const state = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-  const values = state.split(/\\r?\\n/).map(Number);
+  const values = state.split(/\r?\n/).map(Number);
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
     throw new Error('Could not save the original CPU frequency limits');
   }
@@ -170,7 +170,7 @@ async function applyCpuFrequencies(littleKhz, bigKhz, locking) {
       'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq');
   }
   const check = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-  const values = check.split(/\\r?\\n/).map(Number);
+  const values = check.split(/\r?\n/).map(Number);
   if (values.length !== 4 || values[1] !== littleKhz || values[3] !== bigKhz ||
       (locking && (values[0] !== littleKhz || values[2] !== bigKhz))) {
     throw new Error('The kernel did not accept the selected CPU frequencies');
@@ -230,7 +230,7 @@ async function loadCpuModule() {
       if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
 
       const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
-      const actual = Object.fromEntries(verify.split(/\\r?\\n/).filter(Boolean).map(line => {
+      const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
         const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
       }));
       if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
