@@ -126,6 +126,16 @@ jobs:
           mkdir -p package/META-INF/com/google/android
           cp module.prop package/module.prop
           cp -R webroot package/webroot
+
+          # Bundle the KernelSU JavaScript API import for Android WebView.
+          npm install --no-save --no-package-lock kernelsu esbuild
+          ./node_modules/.bin/esbuild webroot/app.js --bundle --format=iife --platform=browser --target=es2020 --outfile=package/webroot/app.js
+          test -s package/webroot/app.js
+          if grep -qE "from ['\"]kernelsu['\"]" package/webroot/app.js; then
+            echo "KernelSU import was not bundled"
+            exit 1
+          fi
+
           cat > package/META-INF/com/google/android/update-binary <<'EOF'
           #!/sbin/sh
           OUTFD="$2"
