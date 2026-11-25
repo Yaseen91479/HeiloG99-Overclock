@@ -127,7 +127,8 @@ function setCpuControlState(loaded) {
   const toggle = $('cpu-toggle');
   if (!toggle) return;
   toggle.setAttribute('aria-pressed', String(loaded));
-  toggle.textContent = loaded ? 'Disable CPU OC' : 'Enable CPU OC';
+  toggle.textContent = loaded ? 'Disable CPU control' : 'CPU control inactive';
+  toggle.disabled = !loaded;
   toggle.classList.toggle('active', loaded);
 }
 
@@ -140,7 +141,7 @@ const CPU_LOCK_STATE = CPU_MODULE_DIR + '/.cpu-frequency-lock-state';
 async function restoreCpuFrequencyLock() {
   const state = await read('if [ -f ' + CPU_LOCK_STATE + ' ]; then cat ' + CPU_LOCK_STATE + '; fi');
   if (!state) return;
-  const values = state.split(/\r?\n/).map(Number);
+  const values = state.trim().split(/\s+/).map(Number);
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
     throw new Error('Saved CPU frequency state is invalid');
   }
@@ -151,25 +152,28 @@ async function restoreCpuFrequencyLock() {
     'echo ' + min6 + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq && rm -f ' + CPU_LOCK_STATE);
 }
 
-async function lockCpuFrequencies(littleKhz, bigKhz) {
-  const raw = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-  const values = raw.split(/\r?\n/).map(Number);
+async function saveCpuFrequencyState() {
+  const state = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
+  const values = state.split(/\\r?\\n/).map(Number);
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
-    throw new Error('Could not read current CPU frequency limits');
+    throw new Error('Could not save the original CPU frequency limits');
   }
   await read("printf '%s\\n' " + values.join(' ') + " > " + CPU_LOCK_STATE);
-  try {
-    await read('echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
-      'echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
-      'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq && ' +
+}
+
+async function applyCpuFrequencies(littleKhz, bigKhz, locking) {
+  const command = 'echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
+    'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq';
+  await read(command);
+  if (locking) {
+    await read('echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
       'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq');
-    const check = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-    if (check !== [littleKhz, littleKhz, bigKhz, bigKhz].join('\n')) {
-      throw new Error('The kernel did not accept the exact locked frequencies');
-    }
-  } catch (error) {
-    await restoreCpuFrequencyLock().catch(() => {});
-    throw error;
+  }
+  const check = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
+  const values = check.split(/\\r?\\n/).map(Number);
+  if (values.length !== 4 || values[1] !== littleKhz || values[3] !== bigKhz ||
+      (locking && (values[0] !== littleKhz || values[2] !== bigKhz))) {
+    throw new Error('The kernel did not accept the selected CPU frequencies');
   }
 }
 
@@ -214,35 +218,33 @@ async function loadCpuModule() {
   if (!littleValid || !bigValid) {
     throw new Error('Selected CPU frequency is outside the supported range');
   }
-  if (!locking && (littleKhz <= stock.policy0.max || bigKhz <= stock.policy6.max)) {
-    throw new Error('Enable frequency lock to use values at or below the stock maximum');
-  }
 
   const needsOverclock = littleKhz > stock.policy0.max || bigKhz > stock.policy6.max;
-  if (needsOverclock) {
-    await ensureLoaderExecutable();
-    const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
-      '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
-    const result = await exec(command);
-    if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
+  await saveCpuFrequencyState();
+  try {
+    if (needsOverclock) {
+      await ensureLoaderExecutable();
+      const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
+        '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
+      const result = await exec(command);
+      if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
 
-    const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
-    const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
-      const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
-    }));
-    if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
-      await unloadCpuModule();
-      throw new Error('Requested CPU maximums were not confirmed');
+      const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+      const actual = Object.fromEntries(verify.split(/\\r?\\n/).filter(Boolean).map(line => {
+        const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
+      }));
+      if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
+        throw new Error('Requested CPU maximums were not confirmed');
+      }
     }
-  }
-
-  if (locking) {
-    try {
-      await lockCpuFrequencies(littleKhz, bigKhz);
-    } catch (error) {
-      if (needsOverclock) await unloadCpuModule().catch(() => {});
-      throw error;
+    await applyCpuFrequencies(littleKhz, bigKhz, locking);
+  } catch (error) {
+    await restoreCpuFrequencyLock().catch(() => {});
+    if (needsOverclock) {
+      await ensureLoaderExecutable().catch(() => {});
+      await exec(CPU_MODULE_DIR + '/loader -r cpu_oc').catch(() => {});
     }
+    throw error;
   }
 }
 
@@ -277,10 +279,7 @@ async function runCpuAction(action) {
   }
 }
 
-$('cpu-toggle').addEventListener('click', async () => {
-  const loaded = await cpuModuleLoaded().catch(() => false);
-  await runCpuAction(loaded ? 'off' : 'on');
-});
+$('cpu-toggle').addEventListener('click', () => runCpuAction('off'));
 $('cpu-apply').addEventListener('click', () => runCpuAction('on'));
 
 refresh();
