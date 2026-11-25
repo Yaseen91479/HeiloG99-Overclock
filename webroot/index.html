@@ -8,7 +8,7 @@
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(18px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
 .app{max-width:620px;margin:0 auto}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 2px 22px}h1{font-size:21px;margin:0;letter-spacing:-.5px}.sub{color:var(--muted);font-size:12px;margin-top:4px}.version{color:var(--accent);background:#252d46;padding:7px 10px;border-radius:99px;font-size:11px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}.tile{text-align:left;color:inherit;width:100%;cursor:pointer;font:inherit}.tile:active{transform:scale(.985)}.tile-head{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px}.glyph{display:grid;place-items:center;width:38px;height:38px;border-radius:13px;background:var(--panel2);color:var(--accent);font-size:19px}.metric{font-size:25px;font-weight:700;margin-top:17px;letter-spacing:-.8px}.hint{color:var(--muted);font-size:12px;margin-top:3px}
-.section{margin-top:14px}.section-title{font-size:14px;font-weight:650;margin:0 0 11px 2px}.readout{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.readout:last-child{border-bottom:0}.readout span:first-child{color:var(--muted)}.value{font-variant-numeric:tabular-nums;font-weight:650}.status{display:flex;align-items:center;gap:8px;color:var(--amber);font-size:12px;margin-top:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}.dot.ok{background:var(--green)}.module-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}.module-row+.module-row{border-top:1px solid var(--line)}.pill{font-size:11px;padding:5px 9px;border-radius:99px;color:var(--muted);background:var(--panel2)}.page{display:none}.page.active{display:block}.back{border:0;color:var(--accent);background:transparent;padding:8px 0 16px;font:inherit;cursor:pointer}.hero{padding:20px;background:linear-gradient(145deg,#242d49,#191e2a 70%);border:1px solid #384360;border-radius:var(--radius)}.hero h2{margin:0 0 5px;font-size:20px}.hero p{margin:0;color:var(--muted);font-size:12px}.option{margin-top:11px;padding:15px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.option strong{display:block;font-size:14px}.option p{margin:5px 0 0;color:var(--muted);font-size:12px}.notice{color:var(--amber);font-size:12px;margin-top:14px;padding:12px;background:#332a1c;border-radius:13px}footer{color:#778398;font-size:11px;text-align:center;margin:22px 0 4px}.actions{display:flex;gap:8px;margin-top:12px}.action{border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);padding:10px 13px;font:inherit;font-size:12px;cursor:pointer}.small{font-size:11px;color:var(--muted)}@media(max-width:380px){.grid{gap:9px}.card{padding:13px}.metric{font-size:22px}}
+.section{margin-top:14px}.section-title{font-size:14px;font-weight:650;margin:0 0 11px 2px}.readout{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.readout:last-child{border-bottom:0}.readout span:first-child{color:var(--muted)}.value{font-variant-numeric:tabular-nums;font-weight:650}.status{display:flex;align-items:center;gap:8px;color:var(--amber);font-size:12px;margin-top:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}.dot.ok{background:var(--green)}.module-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}.module-row+.module-row{border-top:1px solid var(--line)}.pill{font-size:11px;padding:5px 9px;border-radius:99px;color:var(--muted);background:var(--panel2)}.page{display:none}.page.active{display:block}.back{border:0;color:var(--accent);background:transparent;padding:8px 0 16px;font:inherit;cursor:pointer}.hero{padding:20px;background:linear-gradient(145deg,#242d49,#191e2a 70%);border:1px solid #384360;border-radius:var(--radius)}.hero h2{margin:0 0 5px;font-size:20px}.hero p{margin:0;color:var(--muted);font-size:12px}.option{margin-top:11px;padding:15px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.option strong{display:block;font-size:14px}.option p{margin:5px 0 0;color:var(--muted);font-size:12px}.notice{color:var(--amber);font-size:12px;margin-top:14px;padding:12px;background:#332a1c;border-radius:13px}footer{color:#778398;font-size:11px;text-align:center;margin:22px 0 4px}.actions{display:flex;gap:8px;margin-top:12px}.action{border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);padding:10px 13px;font:inherit;font-size:12px;cursor:pointer}.small{font-size:11px;color:var(--muted)}.reading-lines{white-space:pre-line;line-height:1.8}@media(max-width:380px){.grid{gap:9px}.card{padding:13px}.metric{font-size:22px}}
 </style>
 </head>
 <body><main class="app">
@@ -30,6 +30,11 @@
 <div class="module-row"><span>gpu_oc.ko</span><span class="pill" id="gpu-module">Checking…</span></div></section>
 <footer>*Thermal reading is the highest readable zone; its hardware type is not identified. Monitoring only. This interface does not change CPU/GPU frequencies or load kernel modules.</footer>
 </section>
+<section id="cpu-page" class="page"><button class="back" id="back-cpu" type="button">← Dashboard</button>
+<div class="hero"><h2>CPU monitor</h2><p>Helio G99 · live policy readings</p></div>
+<div class="option"><strong>CPU frequency by policy</strong><p class="reading-lines" id="cpu-page-readings">Waiting for CPU page…</p></div>
+<div class="small" id="cpu-page-updated">Updates only while this page is open.</div>
+<div class="notice">Read-only monitoring. CPUs sharing one cpufreq policy report a shared policy frequency, not independent per-core measurements.</div></section>
 <section id="gpu-page" class="page"><button class="back" id="back-home" type="button">← Dashboard</button>
 <div class="hero"><h2>GPU monitor</h2><p>Mali-G57 MC2 · Helio G99</p></div>
 <div class="option"><strong>Module status</strong><p id="gpu-page-status">Checking kernel module list…</p></div>
@@ -119,9 +124,37 @@ function stopGpuMonitor() {
 }
 $('open-gpu').addEventListener('click',()=>{$('home').classList.remove('active');$('gpu-page').classList.add('active');window.scrollTo(0,0);startGpuMonitor();});
 $('back-home').addEventListener('click',()=>{$('gpu-page').classList.remove('active');$('home').classList.add('active');stopGpuMonitor();window.scrollTo(0,0);});
-document.addEventListener('visibilitychange',()=>{if(document.hidden) stopGpuMonitor(); else if($('gpu-page').classList.contains('active')) startGpuMonitor();});
+
 $('refresh').addEventListener('click',refresh);
-$('cpu-tile').addEventListener('click',()=>document.querySelector('.section.card').scrollIntoView({behavior:'smooth'}));
+let cpuTimer = null;
+async function refreshCpuPage() {
+  if (!$('cpu-page').classList.contains('active') || document.hidden) return;
+  try {
+    const raw = await read("for p in /sys/devices/system/cpu/cpufreq/policy*; do [ -d \"$p\" ] || continue; printf '%s|%s|%s|%s|%s\\n' \"$(basename \"$p\")\" \"$(cat \"$p/related_cpus\" 2>/dev/null)\" \"$(cat \"$p/scaling_cur_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_min_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_max_freq\" 2>/dev/null)\"; done");
+    const lines = raw.split(/\r?\n/).filter(Boolean).map(line => {
+      const [policy, cpus, cur, min, max] = line.split('|');
+      const mhz = value => Number.isFinite(Number(value)) ? (Number(value)/1000).toFixed(0)+' MHz' : '--';
+      return policy+' · CPUs '+(cpus || 'unknown')+'\nCurrent: '+mhz(cur)+'   Min: '+mhz(min)+'   Max: '+mhz(max);
+    });
+    show('cpu-page-readings',lines.length ? lines.join('\n\n') : 'No CPU frequency policies found');
+    show('cpu-page-updated','Live · refreshed '+new Date().toLocaleTimeString()+' · pauses when this page is closed or hidden');
+  } catch (error) {
+    show('cpu-page-readings','Read failed: '+(error?.message || 'unknown error'));
+    show('cpu-page-updated','CPU readings unavailable');
+  }
+}
+function startCpuMonitor() {
+  if (cpuTimer !== null || document.hidden) return;
+  refreshCpuPage();
+  cpuTimer = setInterval(refreshCpuPage,1000);
+}
+function stopCpuMonitor() {
+  if (cpuTimer !== null) clearInterval(cpuTimer);
+  cpuTimer = null;
+}
+$('cpu-tile').addEventListener('click',()=>{$('home').classList.remove('active');$('cpu-page').classList.add('active');window.scrollTo(0,0);startCpuMonitor();});
+$('back-cpu').addEventListener('click',()=>{$('cpu-page').classList.remove('active');$('home').classList.add('active');stopCpuMonitor();window.scrollTo(0,0);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopGpuMonitor();stopCpuMonitor();}else{if($('gpu-page').classList.contains('active'))startGpuMonitor();if($('cpu-page').classList.contains('active'))startCpuMonitor();}});
 refresh();
 </script>
 </body></html>
