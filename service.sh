@@ -10,14 +10,16 @@ fi
 
 if [ -f "$STATE" ]; then
   set -- $(cat "$STATE")
-  case "$1:$2:$3:$4" in
-    *[!0-9:]*|':::') ;;
-    *)
-      echo "$2" > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq 2>/dev/null
-      echo "$1" > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 2>/dev/null
-      echo "$4" > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 2>/dev/null
-      echo "$3" > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq 2>/dev/null
-      ;;
-  esac
+  if [ "$#" -eq 4 ]; then
+    case "$1$2$3$4" in
+      *[!0-9]*) ;;
+      *)
+        echo "$2" > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq 2>/dev/null
+        echo "$1" > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq 2>/dev/null
+        echo "$4" > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 2>/dev/null
+        echo "$3" > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq 2>/dev/null
+        ;;
+    esac
+  fi
   rm -f "$STATE"
 fi
