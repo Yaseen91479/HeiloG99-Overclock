@@ -139,17 +139,13 @@ async function cpuModuleLoaded() {
 const CPU_LOCK_STATE = CPU_MODULE_DIR + '/.cpu-frequency-lock-state';
 
 async function restoreCpuFrequencyLock() {
-  const state = await read('if [ -f ' + CPU_LOCK_STATE + ' ]; then cat ' + CPU_LOCK_STATE + '; fi');
-  if (!state) return;
-  const values = state.trim().split(/\s+/).map(Number);
-  if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
-    throw new Error('Saved CPU frequency state is invalid');
-  }
-  const [min0, max0, min6, max6] = values;
-  await read('echo ' + max0 + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
-    'echo ' + min0 + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
-    'echo ' + max6 + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq && ' +
-    'echo ' + min6 + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq && rm -f ' + CPU_LOCK_STATE);
+  const stock = await getStockCpuLimits();
+  const p0 = '/sys/devices/system/cpu/cpufreq/policy0';
+  const p6 = '/sys/devices/system/cpu/cpufreq/policy6';
+  await read('echo ' + stock.policy0.min + ' > ' + p0 + '/scaling_min_freq && ' +
+    'echo ' + stock.policy0.max + ' > ' + p0 + '/scaling_max_freq && ' +
+    'echo ' + stock.policy6.min + ' > ' + p6 + '/scaling_min_freq && ' +
+    'echo ' + stock.policy6.max + ' > ' + p6 + '/scaling_max_freq && rm -f ' + CPU_LOCK_STATE);
 }
 
 async function saveCpuFrequencyState() {
