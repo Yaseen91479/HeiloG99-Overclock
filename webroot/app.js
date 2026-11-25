@@ -273,7 +273,6 @@ async function runCpuAction(action) {
       setCpuControlState(loaded);
       await refreshCpuPage();
     } catch (_) {}
-    toggle.disabled = false;
     apply.disabled = false;
     cpuActionBusy = false;
   }
