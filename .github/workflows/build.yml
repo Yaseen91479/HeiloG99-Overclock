@@ -4,7 +4,7 @@ on: workflow_dispatch
 env:
   RELEASE_TAG: kernel-src
   ASSET: SM-A075F_16_Opensource.zip
-  KREL: 6.12.69-android16-6-abA075FXXU7DZJ5-4k   # = uname -r on the phone
+  KREL: 6.12.69-android16-6-abA075FXXU7DZJ-4k   # Galaxy A07 Android 17 kernel release reported by the device
 
 jobs:
   build:
@@ -86,6 +86,7 @@ jobs:
               echo "=== mod.c ==="; sed -n 1,60p modbuild/cpu_oc.mod.c; exit 1; }
           tail -15 /tmp/mod.log
           ls -la modbuild/cpu_oc.ko modbuild/gpu_oc.ko
+          test "$(modinfo -F vermagic modbuild/cpu_oc.ko | awk '{print $1}')" = "$KREL"
           {
             echo "=== modinfo ==="; modinfo modbuild/cpu_oc.ko; modinfo modbuild/gpu_oc.ko
             echo "=== undefined symbols ==="; llvm-nm -u modbuild/cpu_oc.ko; llvm-nm -u modbuild/gpu_oc.ko
@@ -116,16 +117,29 @@ jobs:
           path: loader
 
   package-webui:
+    needs: [build, loader]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Package KernelSU WebUI-only module
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpu-oc
+          path: artifacts/cpu-oc
+      - uses: actions/download-artifact@v4
+        with:
+          name: loader
+          path: artifacts/loader
+      - name: Package KernelSU module with CPU controls
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p package/META-INF/com/google/android
           cp module.prop package/module.prop
           cp -R webroot package/webroot
+          cp artifacts/cpu-oc/cpu_oc.ko package/cpu_oc.ko
+          cp artifacts/loader/loader package/loader
+          test -s package/cpu_oc.ko && test -s package/loader
+          chmod 0755 package/loader
 
           # Bundle the KernelSU JavaScript API import for Android WebView.
           npm install --no-save --no-package-lock kernelsu esbuild
@@ -154,13 +168,16 @@ jobs:
 
           ui_print "Installing Helio G99 Control WebUI"
           mkdir -p "$MODPATH" || abort "Cannot create module directory"
-          unzip -o "$ZIPFILE" "module.prop" "webroot/*" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
+          unzip -o "$ZIPFILE" "module.prop" "webroot/*" "cpu_oc.ko" "loader" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
           [ -s "$MODPATH/module.prop" ] || abort "module.prop missing"
           [ -s "$MODPATH/webroot/index.html" ] || abort "webroot/index.html missing"
+          [ -s "$MODPATH/cpu_oc.ko" ] || abort "cpu_oc.ko missing"
+          [ -s "$MODPATH/loader" ] || abort "loader missing"
+          chmod 0755 "$MODPATH/loader" || abort "Cannot make loader executable"
           find "$MODPATH" -type d -exec chmod 0755 {} \; 2>/dev/null
           find "$MODPATH" -type f -exec chmod 0644 {} \; 2>/dev/null
-          ui_print "Installed read-only dashboard files."
-          ui_print "No kernel modules or frequency controls are installed."
+          ui_print "Installed dashboard, CPU module, and loader."
+          ui_print "CPU OC remains OFF until enabled from the CPU page."
           exit 0
           EOF
           chmod 0755 package/META-INF/com/google/android/update-binary
