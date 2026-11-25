@@ -164,13 +164,13 @@ async function refreshCpuPage() {
       return policy+' · CPUs '+(cpus || 'unknown')+'\nCurrent: '+mhz(cur)+'   Min: '+mhz(min)+'   Max: '+mhz(max);
     });
     show('cpu-page-readings',lines.length ? lines.join('\n\n') : 'No CPU frequency policies found');
-    const byPolicy = Object.fromEntries(raw.split(/\\r?\\n/).filter(Boolean).map(line => { const [policy, cpus, cur, min, max] = line.split('|'); return [policy,{cpus,cur,min,max}]; }));
-    const clusterText = value => value && /^\\d+$/.test(value) ? (Number(value)/1000).toFixed(0)+' MHz' : 'Unavailable';
+    const byPolicy = Object.fromEntries(raw.split(/\r?\n/).filter(Boolean).map(line => { const [policy, cpus, cur, min, max] = line.split('|'); return [policy,{cpus,cur,min,max}]; }));
+    const clusterText = value => value && /^\d+$/.test(value) ? (Number(value)/1000).toFixed(0)+' MHz' : 'Unavailable';
     const little = byPolicy.policy0, big = byPolicy.policy6;
     show('little-current',little ? clusterText(little.cur) : '-- MHz');
-    show('little-meta',little ? 'CPUs '+(little.cpus||'—')+'\\nMin: '+clusterText(little.min)+' · Max: '+clusterText(little.max) : 'Policy 0 unavailable');
+    show('little-meta',little ? 'CPUs '+(little.cpus||'—')+'\nMin: '+clusterText(little.min)+' · Max: '+clusterText(little.max) : 'Policy 0 unavailable');
     show('big-current',big ? clusterText(big.cur) : '-- MHz');
-    show('big-meta',big ? 'CPUs '+(big.cpus||'—')+'\\nMin: '+clusterText(big.min)+' · Max: '+clusterText(big.max) : 'Policy 6 unavailable');
+    show('big-meta',big ? 'CPUs '+(big.cpus||'—')+'\nMin: '+clusterText(big.min)+' · Max: '+clusterText(big.max) : 'Policy 6 unavailable');
     show('cpu-page-updated','Live · refreshed '+new Date().toLocaleTimeString()+' · pauses when this page is closed or hidden');
   } catch (error) {
     show('cpu-page-readings','Read failed: '+(error?.message || 'unknown error'));
