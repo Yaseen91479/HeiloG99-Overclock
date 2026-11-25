@@ -114,3 +114,50 @@ jobs:
         with:
           name: loader
           path: loader
+
+  package-webui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package KernelSU WebUI-only module
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/META-INF/com/google/android
+          cp module.prop package/module.prop
+          cp -R webroot package/webroot
+          cat > package/META-INF/com/google/android/update-binary <<'EOF'
+          #!/sbin/sh
+          OUTFD="$2"
+          ZIPFILE="$3"
+          MODID="heilog99_control"
+          MODPATH="/data/adb/modules_update/$MODID"
+
+          ui_print() {
+            echo "ui_print $1" >&"$OUTFD"
+            echo "ui_print" >&"$OUTFD"
+          }
+          abort() {
+            ui_print "ERROR: $1"
+            exit 1
+          }
+
+          ui_print "Installing Helio G99 Control WebUI"
+          mkdir -p "$MODPATH" || abort "Cannot create module directory"
+          unzip -o "$ZIPFILE" "module.prop" "webroot/*" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
+          [ -s "$MODPATH/module.prop" ] || abort "module.prop missing"
+          [ -s "$MODPATH/webroot/index.html" ] || abort "webroot/index.html missing"
+          find "$MODPATH" -type d -exec chmod 0755 {} \; 2>/dev/null
+          find "$MODPATH" -type f -exec chmod 0644 {} \; 2>/dev/null
+          ui_print "Installed read-only dashboard files."
+          ui_print "No kernel modules or frequency controls are installed."
+          exit 0
+          EOF
+          chmod 0755 package/META-INF/com/google/android/update-binary
+          : > package/META-INF/com/google/android/updater-script
+          (cd package && zip -qr ../HelioG99-Control-WebUI-KSU.zip .)
+          unzip -t HelioG99-Control-WebUI-KSU.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HelioG99-Control-WebUI-KSU
+          path: HelioG99-Control-WebUI-KSU.zip
