@@ -132,7 +132,7 @@ function setCpuControlState(loaded) {
 }
 
 async function cpuModuleLoaded() {
-  return (await read("if grep -q '^cpu_oc ' /proc/modules; then echo yes; else echo no; fi")) === 'yes';
+  return (await read("if grep -q '^cpu_oc ' /proc/modules || [ -f " + CPU_LOCK_STATE + " ]; then echo yes; else echo no; fi")) === 'yes';
 }
 
 const CPU_LOCK_STATE = CPU_MODULE_DIR + '/.cpu-frequency-lock-state';
@@ -182,13 +182,16 @@ async function unloadCpuModule() {
   if (await cpuModuleLoaded()) throw new Error('cpu_oc is still loaded after unload');
 }
 
-async function getStockCpuMaxima() {
-  const raw = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
-  const values = Object.fromEntries(raw.split(/\r?\n/).filter(Boolean).map(line => {
-    const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
-  }));
-  if (!Number.isFinite(values.policy0) || !Number.isFinite(values.policy6)) {
-    throw new Error('Could not read the Little/Big CPU policy maximums');
+async function getStockCpuLimits() {
+  const raw = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s:%s:%s\\n' \"$n\" \"$(cat $p/cpuinfo_min_freq)\" \"$(cat $p/cpuinfo_max_freq)\"; done");
+  const values = {};
+  raw.split(/\r?\n/).filter(Boolean).forEach(line => {
+    const [name, min, max] = line.split(':');
+    values[name] = {min: Number(min), max: Number(max)};
+  });
+  if (!values.policy0 || !values.policy6 ||
+      ![values.policy0.min, values.policy0.max, values.policy6.min, values.policy6.max].every(Number.isFinite)) {
+    throw new Error('Could not read the Little/Big CPU frequency limits');
   }
   return values;
 }
@@ -200,33 +203,40 @@ async function loadCpuModule() {
     throw new Error('Select valid whole-number CPU frequencies');
   }
 
-  const stock = await getStockCpuMaxima();
+  const stock = await getStockCpuLimits();
   const littleKhz = littleMhz * 1000;
   const bigKhz = bigMhz * 1000;
-  if (littleKhz <= stock.policy0 || littleKhz > stock.policy0 + 400000) {
-    throw new Error('Little must be above its current maximum and no more than +400 MHz (' +
-      (stock.policy0 / 1000).toFixed(0) + '–' + ((stock.policy0 + 400000) / 1000).toFixed(0) + ' MHz)');
+  const locking = $('cpu-lock-frequency').checked;
+  const littleValid = littleKhz >= stock.policy0.min &&
+    littleKhz <= stock.policy0.max + 400000;
+  const bigValid = bigKhz >= stock.policy6.min &&
+    bigKhz <= stock.policy6.max + 400000;
+  if (!littleValid || !bigValid) {
+    throw new Error('Selected CPU frequency is outside the supported range');
   }
-  if (bigKhz <= stock.policy6 || bigKhz > stock.policy6 + 400000) {
-    throw new Error('Big must be above its current maximum and no more than +400 MHz (' +
-      (stock.policy6 / 1000).toFixed(0) + '–' + ((stock.policy6 + 400000) / 1000).toFixed(0) + ' MHz)');
+  if (!locking && (littleKhz <= stock.policy0.max || bigKhz <= stock.policy6.max)) {
+    throw new Error('Enable frequency lock to use values at or below the stock maximum');
   }
 
-  await ensureLoaderExecutable();
-  const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
-    '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
-  const result = await exec(command);
-  if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
+  const needsOverclock = littleKhz > stock.policy0.max || bigKhz > stock.policy6.max;
+  if (needsOverclock) {
+    await ensureLoaderExecutable();
+    const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
+      '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
+    const result = await exec(command);
+    if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
 
-  const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
-  const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
-    const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
-  }));
-  if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
-    await unloadCpuModule();
-    throw new Error('Module loaded, but both requested CPU maximums were not confirmed; module was unloaded');
+    const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/cpuinfo_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+    const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
+      const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
+    }));
+    if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
+      await unloadCpuModule();
+      throw new Error('Requested CPU maximums were not confirmed');
+    }
   }
-  if ($('cpu-lock-frequency').checked) {
+
+  if (locking) {
     await lockCpuFrequencies(littleKhz, bigKhz);
   }
 }
