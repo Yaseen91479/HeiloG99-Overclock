@@ -48,8 +48,10 @@
 <div class="notice">GPU page is monitoring-only; CPU module controls are separate.</div>
 <div class="control-preview" aria-label="GPU control layout preview">
   <div class="control-head"><div><strong>GPU frequency control</strong><div class="small">KernelSU module control</div></div><span class="pill">PREVIEW ONLY</span></div>
-  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="390" max="1100" step="10" value="390" aria-label="GPU preview frequency"><div class="range-ends"><span>390 MHz</span><span>1100 MHz</span></div></div>
-  <p class="small">This slider only changes the preview value shown here. It does not communicate with KernelSU or change GPU frequency.</p>
+  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="0" max="44" step="1" value="44" aria-label="GPU preview OPP selection"><div class="range-ends"><span>1100 MHz · OPP 0</span><span>390 MHz · OPP 44</span></div></div>
+  <label class="lock-option"><input id="gpu-lock-preview" type="checkbox"> Fixed-target mode</label>
+  <p class="small" id="gpu-lock-preview-status">Dynamic GPU frequency · preview only</p>
+  <p class="small">The slider follows all 45 signed OPP entries (44 intervals), including their non-uniform frequency steps. These controls are visual previews only; they do not communicate with KernelSU or change GPU frequency.</p>
 </div></section>
 </main>
 <script src="./app.js"></script>
