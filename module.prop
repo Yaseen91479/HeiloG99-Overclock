@@ -1,0 +1,6 @@
+id=heilog99_control
+name=Helio G99 Control
+version=0.1.0
+versionCode=1
+author=Yaseen91479
+description=KernelSU WebUI dashboard for Helio G99 CPU and GPU monitoring.
