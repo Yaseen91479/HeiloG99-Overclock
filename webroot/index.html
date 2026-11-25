@@ -13,7 +13,7 @@
 </head>
 <body><main class="app">
 <section id="home" class="page active">
-<header><div><h1>Helio G99 Control</h1><div class="sub">KernelSU live monitor · read-only</div></div><span class="version">v0.1.0</span></header>
+<header><div><h1>Helio G99 Control</h1><div class="sub">Helio G99 · CPU control</div></div><span class="version">v0.1.0</span></header>
 <div class="grid">
 <button class="card tile" type="button" id="cpu-tile"><div class="tile-head"><span>CPU</span><span class="glyph">◈</span></div><div class="metric" id="cpu-main">-- GHz</div><div class="hint" id="cpu-hint">Waiting for KernelSU</div></button>
 <button class="card tile" type="button" id="open-gpu"><div class="tile-head"><span>GPU</span><span class="glyph">▦</span></div><div class="metric">GPU</div><div class="hint">Open GPU page →</div></button>
@@ -25,32 +25,18 @@
 <div class="readout"><span>CPU policies</span><span class="value" id="policies">--</span></div>
 <div class="status"><i class="dot" id="connection-dot"></i><span id="connection">Connecting to KernelSU API…</span></div>
 <div class="actions"><button class="action" id="refresh" type="button">Refresh readings</button><span class="small" id="updated">Not updated</span></div></section>
-<section class="section card"><h2 class="section-title">Kernel modules</h2>
-<div class="module-row"><span>cpu_oc.ko</span><span class="pill" id="cpu-module">Checking…</span></div>
-<div class="module-row"><span>gpu_oc.ko</span><span class="pill" id="gpu-module">Checking…</span></div></section>
 <footer>*Thermal reading is the highest readable zone; its hardware type is not identified. Monitoring only. CPU controls are available on the CPU page; GPU controls remain monitoring-only.</footer>
 </section>
 <section id="cpu-page" class="page"><button class="back" id="back-cpu" type="button">← Dashboard</button>
-<div class="hero"><h2>CPU monitor</h2><p>Helio G99 · live policy readings</p></div>
-<div class="option"><strong>CPU OC module</strong>
-<p class="reading-lines" id="cpu-oc-status">Checking cpu_oc.ko…</p>
-<p class="reading-lines" id="cpu-oc-settings">Reading module parameters…</p></div>
-<div class="option"><strong>CPU frequency by policy</strong><p class="reading-lines" id="cpu-page-readings">Waiting for CPU page…</p></div>
-<div class="cluster-grid">
-  <div class="cluster"><h3>Little · Policy 0</h3><div class="cluster-value" id="little-current">-- MHz</div><div class="cluster-meta" id="little-meta">CPUs 0–5<br>Min: -- · Max: --</div><span class="locked">● Live policy reading</span></div>
-  <div class="cluster"><h3>Big · Policy 6</h3><div class="cluster-value" id="big-current">-- MHz</div><div class="cluster-meta" id="big-meta">CPUs 6–7<br>Min: -- · Max: --</div><span class="locked">● Read-only · controls locked</span></div>
-</div>
-<div class="cluster-note">The two CPU groups are shown separately. Values are read from the active cpufreq policies.</div>
-<div class="small" id="cpu-page-updated">Updates only while this page is open.</div>
-<div class="notice">Read-only monitoring. CPUs sharing one cpufreq policy report a shared policy frequency, not independent per-core measurements.</div>
+<div class="hero"><h2>CPU control</h2><p>Helio G99</p></div>
 <div class="control-preview" aria-label="CPU control layout preview">
-  <div class="control-head"><div><strong>Overclock controls</strong><div class="small">Loads or unloads your cpu_oc.ko module</div></div><button class="action switch-action" id="cpu-toggle" type="button" aria-pressed="false">CPU OC · OFF</button></div>
-  <p class="small" id="cpu-control-status" role="status">Checking module state…</p>
+  <div class="control-head"><div><strong>Overclock controls</strong></div><button class="action switch-action" id="cpu-toggle" type="button" aria-pressed="false">Enable CPU OC</button></div>
+  <p class="small" id="cpu-control-status" role="status">Ready</p>
   <div class="freq-row"><div class="freq-label"><strong>Little cores · CPUs 0–5</strong><span class="freq-value" id="little-selected">2000 MHz</span></div><input class="freq-range" id="little-slider" type="range" min="500" max="2800" step="25" value="2300" aria-label="Little CPU maximum frequency"><div class="range-ends"><span>500 MHz</span><span>2800 MHz</span></div></div>
   <div class="freq-row"><div class="freq-label"><strong>Big cores · CPUs 6–7</strong><span class="freq-value" id="big-selected">2200 MHz</span></div><input class="freq-range" id="big-slider" type="range" min="750" max="3000" step="25" value="2500" aria-label="Big CPU maximum frequency"><div class="range-ends"><span>750 MHz</span><span>3000 MHz</span></div></div>
   <div class="confirm-preview" id="little-warning" hidden><strong>Little frequency warning</strong><p>Selected value is above 2300 MHz. This is a caution threshold, not a verified safe limit.</p></div>\n  <div class="confirm-preview" id="big-warning" hidden><strong>Big frequency warning</strong><p>Selected value is above 2500 MHz. This is a caution threshold, not a verified safe limit.</p></div>\n  <p class="small">Choose the target maximum for each CPU policy. The loader validates each value against the live policy maximum and the module’s +400 MHz limit.</p>
   <button class="action" id="cpu-apply" type="button">Apply selected CPU frequencies</button>
-  <p class="small">Turning the switch OFF unloads cpu_oc.ko so its exit routine restores the saved CPU policy and LUT values.</p>
+  <p class="small">Disable CPU OC to restore the original CPU limits.</p>
 </div></section>
 <section id="gpu-page" class="page"><button class="back" id="back-home" type="button">← Dashboard</button>
 <div class="hero"><h2>GPU monitor</h2><p>Mali-G57 MC2 · Helio G99</p></div>
