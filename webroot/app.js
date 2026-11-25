@@ -237,7 +237,12 @@ async function loadCpuModule() {
   }
 
   if (locking) {
-    await lockCpuFrequencies(littleKhz, bigKhz);
+    try {
+      await lockCpuFrequencies(littleKhz, bigKhz);
+    } catch (error) {
+      if (needsOverclock) await unloadCpuModule().catch(() => {});
+      throw error;
+    }
   }
 }
 
