@@ -139,7 +139,7 @@ jobs:
           mkdir -p package/META-INF/com/google/android
           cp module.prop package/module.prop
           cp -R webroot package/webroot
-          cp artifacts/cpu-oc/cpu_oc.ko package/cpu_oc.ko
+          cp artifacts/cpu-oc/modbuild/cpu_oc.ko package/cpu_oc.ko
           cp artifacts/loader/loader package/loader
           test -s package/cpu_oc.ko && test -s package/loader
           chmod 0755 package/loader
