@@ -47,8 +47,7 @@ async function refresh() {
     show('ram', memRaw || 'Unavailable');
     const cpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('cpu_oc '));
     const gpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('gpu_oc '));
-    show('cpu-module',cpuLoaded?'Loaded':'Not loaded');
-    show('gpu-module',gpuLoaded?'Loaded':'Not loaded');
+      show('gpu-module',gpuLoaded?'Loaded':'Not loaded');
     show('gpu-page-status',gpuLoaded?'gpu_oc.ko is listed in /proc/modules.':'gpu_oc.ko is not listed in /proc/modules.');
     show('connection','Connected · read-only data');
     $('connection-dot').classList.add('ok');
@@ -93,35 +92,11 @@ let cpuTimer = null;
 async function refreshCpuPage() {
   if (!$('cpu-page').classList.contains('active') || document.hidden) return;
   try {
-    const [raw, ocRaw] = await Promise.all([
-      read("for p in /sys/devices/system/cpu/cpufreq/policy*; do [ -d \"$p\" ] || continue; printf '%s|%s|%s|%s|%s\\n' \"$(basename \"$p\")\" \"$(cat \"$p/related_cpus\" 2>/dev/null)\" \"$(cat \"$p/scaling_cur_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_min_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_max_freq\" 2>/dev/null)\"; done"),
-      read("if grep -q '^cpu_oc ' /proc/modules; then printf 'loaded\\n'; else printf 'not_loaded\\n'; fi; for n in apply little_khz big_khz resets; do f=/sys/module/cpu_oc/parameters/$n; if [ -r \"$f\" ]; then printf '%s=%s\\n' \"$n\" \"$(cat \"$f\")\"; else printf '%s=unavailable\\n' \"$n\"; fi; done")
-    ]);
-    const ocLines = ocRaw.split(/\r?\n/).filter(Boolean);
-    const ocLoaded = ocLines[0] === 'loaded';
-    show('cpu-oc-status',ocLoaded?'cpu_oc.ko is loaded':'cpu_oc.ko is not loaded');
-    setCpuControlState(ocLoaded);
-    const ocValues = Object.fromEntries(ocLines.slice(1).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)];}));
-    const mode = ocValues.apply === '1' ? 'Apply flag: enabled' : ocValues.apply === '0' ? 'Apply flag: dry-run' : 'Apply flag: unavailable';
-    const khz = v => v && v !== 'unavailable' && /^\d+$/.test(v) ? (Number(v)/1000).toFixed(0)+' MHz' : 'Unavailable';
-    show('cpu-oc-settings',ocLoaded ? mode+'\nLittle configured: '+khz(ocValues.little_khz)+'\nBig configured: '+khz(ocValues.big_khz)+'\nReset counter: '+(ocValues.resets ?? 'Unavailable') : 'Module parameters are available only while cpu_oc.ko is loaded.');
-    const lines = raw.split(/\r?\n/).filter(Boolean).map(line => {
-      const [policy, cpus, cur, min, max] = line.split('|');
-      const mhz = value => Number.isFinite(Number(value)) ? (Number(value)/1000).toFixed(0)+' MHz' : '--';
-      return policy+' · CPUs '+(cpus || 'unknown')+'\nCurrent: '+mhz(cur)+'   Min: '+mhz(min)+'   Max: '+mhz(max);
-    });
-    show('cpu-page-readings',lines.length ? lines.join('\n\n') : 'No CPU frequency policies found');
-    const byPolicy = Object.fromEntries(raw.split(/\r?\n/).filter(Boolean).map(line => { const [policy, cpus, cur, min, max] = line.split('|'); return [policy,{cpus,cur,min,max}]; }));
-    const clusterText = value => value && /^\d+$/.test(value) ? (Number(value)/1000).toFixed(0)+' MHz' : 'Unavailable';
-    const little = byPolicy.policy0, big = byPolicy.policy6;
-    show('little-current',little ? clusterText(little.cur) : '-- MHz');
-    show('little-meta',little ? 'CPUs '+(little.cpus||'—')+'\nMin: '+clusterText(little.min)+' · Max: '+clusterText(little.max) : 'Policy 0 unavailable');
-    show('big-current',big ? clusterText(big.cur) : '-- MHz');
-    show('big-meta',big ? 'CPUs '+(big.cpus||'—')+'\nMin: '+clusterText(big.min)+' · Max: '+clusterText(big.max) : 'Policy 6 unavailable');
-    show('cpu-page-updated','Live · refreshed '+new Date().toLocaleTimeString()+' · pauses when this page is closed or hidden');
+    const loaded = await cpuModuleLoaded();
+    setCpuControlState(loaded);
+    show('cpu-control-status', loaded ? 'CPU OC active' : 'Ready');
   } catch (error) {
-    show('cpu-page-readings','Read failed: '+(error?.message || 'unknown error'));
-    show('cpu-page-updated','CPU readings unavailable');
+    show('cpu-control-status', 'Status unavailable');
   }
 }
 function startCpuMonitor() {
@@ -152,7 +127,7 @@ function setCpuControlState(loaded) {
   const toggle = $('cpu-toggle');
   if (!toggle) return;
   toggle.setAttribute('aria-pressed', String(loaded));
-  toggle.textContent = loaded ? 'CPU OC · ON' : 'CPU OC · OFF';
+  toggle.textContent = loaded ? 'Disable CPU OC' : 'Enable CPU OC';
   toggle.classList.toggle('active', loaded);
 }
 
@@ -221,15 +196,15 @@ async function runCpuAction(action) {
   const apply = $('cpu-apply');
   toggle.disabled = true;
   apply.disabled = true;
-  show('cpu-control-status', action === 'off' ? 'Disabling CPU OC…' : 'Applying CPU settings…');
+  show('cpu-control-status', action === 'off' ? 'Disabling…' : 'Applying…');
   try {
     if (action === 'off') {
       await unloadCpuModule();
-      show('cpu-control-status', 'CPU OC disabled · stock limits restored');
+      show('cpu-control-status', 'CPU OC disabled');
     } else {
       await unloadCpuModule();
       await loadCpuModule();
-      show('cpu-control-status', 'CPU OC active · both policy maximums verified');
+      show('cpu-control-status', 'CPU OC active');
     }
   } catch (error) {
     show('cpu-control-status', 'Action failed: ' + (error?.message || 'unknown error'));
