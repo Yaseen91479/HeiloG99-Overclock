@@ -100,6 +100,7 @@ async function refreshCpuPage() {
     const ocLines = ocRaw.split(/\r?\n/).filter(Boolean);
     const ocLoaded = ocLines[0] === 'loaded';
     show('cpu-oc-status',ocLoaded?'cpu_oc.ko is loaded':'cpu_oc.ko is not loaded');
+    setCpuControlState(ocLoaded);
     const ocValues = Object.fromEntries(ocLines.slice(1).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)];}));
     const mode = ocValues.apply === '1' ? 'Apply flag: enabled' : ocValues.apply === '0' ? 'Apply flag: dry-run' : 'Apply flag: unavailable';
     const khz = v => v && v !== 'unavailable' && /^\d+$/.test(v) ? (Number(v)/1000).toFixed(0)+' MHz' : 'Unavailable';
@@ -135,4 +136,109 @@ function stopCpuMonitor() {
 $('cpu-tile').addEventListener('click',()=>{$('home').classList.remove('active');$('cpu-page').classList.add('active');window.scrollTo(0,0);startCpuMonitor();});
 $('back-cpu').addEventListener('click',()=>{$('cpu-page').classList.remove('active');$('home').classList.add('active');stopCpuMonitor();window.scrollTo(0,0);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){stopGpuMonitor();stopCpuMonitor();}else{if($('gpu-page').classList.contains('active'))startGpuMonitor();if($('cpu-page').classList.contains('active'))startCpuMonitor();}});
+
+const CPU_MODULE_DIR = '/data/adb/modules/heilog99_control';
+let cpuActionBusy = false;
+
+function setCpuControlState(loaded) {
+  const toggle = $('cpu-toggle');
+  if (!toggle) return;
+  toggle.setAttribute('aria-pressed', String(loaded));
+  toggle.textContent = loaded ? 'CPU OC · ON' : 'CPU OC · OFF';
+  toggle.classList.toggle('active', loaded);
+}
+
+async function cpuModuleLoaded() {
+  return (await read("if grep -q '^cpu_oc ' /proc/modules; then echo yes; else echo no; fi")) === 'yes';
+}
+
+async function unloadCpuModule() {
+  if (!(await cpuModuleLoaded())) return;
+  const result = await exec(CPU_MODULE_DIR + '/loader -r cpu_oc');
+  if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Could not unload cpu_oc');
+  if (await cpuModuleLoaded()) throw new Error('cpu_oc is still loaded after unload');
+}
+
+async function getStockCpuMaxima() {
+  const raw = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/scaling_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+  const values = Object.fromEntries(raw.split(/\r?\n/).filter(Boolean).map(line => {
+    const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
+  }));
+  if (!Number.isFinite(values.policy0) || !Number.isFinite(values.policy6)) {
+    throw new Error('Could not read the Little/Big CPU policy maximums');
+  }
+  return values;
+}
+
+async function loadCpuModule() {
+  const littleMhz = Number($('little-slider').value);
+  const bigMhz = Number($('big-slider').value);
+  if (!Number.isInteger(littleMhz) || !Number.isInteger(bigMhz)) {
+    throw new Error('Select valid whole-number CPU frequencies');
+  }
+
+  const stock = await getStockCpuMaxima();
+  const littleKhz = littleMhz * 1000;
+  const bigKhz = bigMhz * 1000;
+  if (littleKhz <= stock.policy0 || littleKhz > stock.policy0 + 400000) {
+    throw new Error('Little must be above its current maximum and no more than +400 MHz (' +
+      (stock.policy0 / 1000).toFixed(0) + '–' + ((stock.policy0 + 400000) / 1000).toFixed(0) + ' MHz)');
+  }
+  if (bigKhz <= stock.policy6 || bigKhz > stock.policy6 + 400000) {
+    throw new Error('Big must be above its current maximum and no more than +400 MHz (' +
+      (stock.policy6 / 1000).toFixed(0) + '–' + ((stock.policy6 + 400000) / 1000).toFixed(0) + ' MHz)');
+  }
+
+  const command = CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR +
+    '/cpu_oc.ko apply=1 little_khz=' + littleKhz + ' big_khz=' + bigKhz;
+  const result = await exec(command);
+  if (!result || result.errno !== 0) throw new Error(result?.stderr || 'Kernel module load failed');
+
+  const verify = await read("for n in policy0 policy6; do f=/sys/devices/system/cpu/cpufreq/$n/scaling_max_freq; [ -r \"$f\" ] && printf '%s:%s\\n' \"$n\" \"$(cat \"$f\")\"; done");
+  const actual = Object.fromEntries(verify.split(/\r?\n/).filter(Boolean).map(line => {
+    const i = line.indexOf(':'); return [line.slice(0, i), Number(line.slice(i + 1))];
+  }));
+  if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
+    await unloadCpuModule();
+    throw new Error('Module loaded, but both requested CPU maximums were not confirmed; module was unloaded');
+  }
+}
+
+async function runCpuAction(action) {
+  if (cpuActionBusy) return;
+  cpuActionBusy = true;
+  const toggle = $('cpu-toggle');
+  const apply = $('cpu-apply');
+  toggle.disabled = true;
+  apply.disabled = true;
+  show('cpu-control-status', action === 'off' ? 'Disabling CPU OC…' : 'Applying CPU settings…');
+  try {
+    if (action === 'off') {
+      await unloadCpuModule();
+      show('cpu-control-status', 'CPU OC disabled · stock limits restored');
+    } else {
+      await unloadCpuModule();
+      await loadCpuModule();
+      show('cpu-control-status', 'CPU OC active · both policy maximums verified');
+    }
+  } catch (error) {
+    show('cpu-control-status', 'Action failed: ' + (error?.message || 'unknown error'));
+  } finally {
+    try {
+      const loaded = await cpuModuleLoaded();
+      setCpuControlState(loaded);
+      await refreshCpuPage();
+    } catch (_) {}
+    toggle.disabled = false;
+    apply.disabled = false;
+    cpuActionBusy = false;
+  }
+}
+
+$('cpu-toggle').addEventListener('click', async () => {
+  const loaded = await cpuModuleLoaded().catch(() => false);
+  await runCpuAction(loaded ? 'off' : 'on');
+});
+$('cpu-apply').addEventListener('click', () => runCpuAction('on'));
+
 refresh();
