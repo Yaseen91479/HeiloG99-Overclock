@@ -63,26 +63,18 @@ int main(int argc, char **argv)
 	}
 
 	if (is_gpu) {
-		/* Keep an explicitly supplied a1. If absent, resolve the first
-		 * exact g_gpu entry from kallsyms (the first duplicate only). */
-		unsigned long supplied_a1 = 0;
-		for (i = 2; i < argc; i++) {
-			if (!strncmp(argv[i], "a1=", 3)) {
-				char *end = NULL;
-				supplied_a1 = strtoul(argv[i] + 3, &end, 0);
-				if (!end || *end != '\\0' || !supplied_a1) {
-					fprintf(stderr, "invalid a1 parameter\\n");
-					return 1;
-				}
-				break;
-			}
-		}
-		g = supplied_a1 ? supplied_a1 : sym("g_gpu");
+		/* GPU A1 is always resolved automatically from the first exact
+		 * g_gpu entry in kallsyms. Manual a1= overrides are not accepted. */
+		g = sym("g_gpu");
 		if (!g) {
 			fprintf(stderr, "g_gpu symbol not found in /proc/kallsyms (need root)\\n");
 			return 1;
 		}
 		for (i = 2; i < argc; i++) {
+			if (!strncmp(argv[i], "a1=", 3)) {
+				fprintf(stderr, "a1 is auto-detected; do not pass it manually\\n");
+				return 1;
+			}
 			if (strlen(params) + strlen(argv[i]) + 2 >= sizeof(params)) {
 				fprintf(stderr, "module parameters too long\\n");
 				return 1;
@@ -90,12 +82,9 @@ int main(int argc, char **argv)
 			strcat(params, argv[i]);
 			strcat(params, " ");
 		}
-		/* Add auto-detected a1 only when the caller did not provide one. */
-		if (!supplied_a1)
-			snprintf(params + strlen(params), sizeof(params) - strlen(params),
-				 "a1=%lx", g);
-		fprintf(stderr, "GPU A1 = %lx (%s)\\n", g,
-			supplied_a1 ? "provided" : "first g_gpu match");
+		snprintf(params + strlen(params), sizeof(params) - strlen(params),
+			 "a1=%lx", g);
+		fprintf(stderr, "GPU A1 = %lx (first g_gpu match)\\n", g);
 
 	} else {
 		g = sym("cpufreq_cpu_get");
