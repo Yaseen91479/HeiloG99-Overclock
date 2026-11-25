@@ -48,7 +48,7 @@ async function read(command) {
   return String(result.stdout || '').trim();
 }
 function parsePolicies(raw) {
-  return raw.split('\\n').filter(Boolean).map(line => {
+  return raw.split('\n').filter(Boolean).map(line => {
     const [name, khz] = line.split(':');
     const n = Number(khz);
     return {name, ghz: Number.isFinite(n) ? (n/1000000).toFixed(2) : null};
@@ -71,11 +71,11 @@ async function refresh() {
     } else {
       show('cpu-main','-- GHz'); show('cpu-hint','CPU frequency interface unavailable'); show('policies','Unavailable');
     }
-    const temps = tempRaw.split('\\n').map(Number).filter(v=>Number.isFinite(v)&&v>0&&v<1000000);
+    const temps = tempRaw.split('\n').map(Number).filter(v=>Number.isFinite(v)&&v>0&&v<1000000);
     show('temp', temps.length ? (Math.max(...temps)/1000).toFixed(1)+' °C*' : 'Unavailable');
     show('ram', memRaw || 'Unavailable');
-    const cpuLoaded = moduleRaw.split('\\n').some(line=>line.startsWith('cpu_oc '));
-    const gpuLoaded = moduleRaw.split('\\n').some(line=>line.startsWith('gpu_oc '));
+    const cpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('cpu_oc '));
+    const gpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('gpu_oc '));
     show('cpu-module',cpuLoaded?'Loaded':'Not loaded');
     show('gpu-module',gpuLoaded?'Loaded':'Not loaded');
     show('gpu-page-status',gpuLoaded?'gpu_oc.ko is listed in /proc/modules.':'gpu_oc.ko is not listed in /proc/modules.');
