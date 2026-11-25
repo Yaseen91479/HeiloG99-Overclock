@@ -1,5 +1,8 @@
 name: build-cpu-oc
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
 
 env:
   RELEASE_TAG: kernel-src
