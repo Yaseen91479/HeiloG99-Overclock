@@ -78,17 +78,17 @@ jobs:
           grep -P '\tmodule_layout\t' device.symvers || echo "WARNING: module_layout not in device.symvers"
           cp device.symvers "$KSRC/Module.symvers"
           mkdir -p modbuild
-          cp cpu_oc.c modbuild/
-          echo 'obj-m += cpu_oc.o' > modbuild/Kbuild
+          cp cpu_oc.c gpu_oc.c modbuild/
+          echo 'obj-m += cpu_oc.o gpu_oc.o' > modbuild/Kbuild
           KBUILD_MODPOST_WARN=1 make -C "$KSRC" M="$GITHUB_WORKSPACE/modbuild" \
             ARCH=arm64 LLVM=1 KERNELRELEASE="$KREL" modules > /tmp/mod.log 2>&1 || {
               echo "=== BUILD FAILED ==="; tail -40 /tmp/mod.log
               echo "=== mod.c ==="; sed -n 1,60p modbuild/cpu_oc.mod.c; exit 1; }
           tail -15 /tmp/mod.log
-          ls -la modbuild/cpu_oc.ko
+          ls -la modbuild/cpu_oc.ko modbuild/gpu_oc.ko
           {
-            echo "=== modinfo ==="; modinfo modbuild/cpu_oc.ko
-            echo "=== undefined symbols ==="; llvm-nm -u modbuild/cpu_oc.ko
+            echo "=== modinfo ==="; modinfo modbuild/cpu_oc.ko; modinfo modbuild/gpu_oc.ko
+            echo "=== undefined symbols ==="; llvm-nm -u modbuild/cpu_oc.ko; llvm-nm -u modbuild/gpu_oc.ko
           } > diag.txt 2>&1 || true
           cat diag.txt
 
@@ -97,6 +97,7 @@ jobs:
           name: cpu-oc
           path: |
             modbuild/cpu_oc.ko
+            modbuild/gpu_oc.ko
             diag.txt
 
   loader:
