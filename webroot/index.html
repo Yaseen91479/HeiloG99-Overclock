@@ -48,7 +48,7 @@
   <div class="readout"><span>Master switch</span><span class="pill">OFF · preview only</span></div>
   <div class="freq-row"><div class="freq-label"><strong>Little cores · CPUs 0–5</strong><span class="freq-value">500–2800 MHz</span></div><input class="freq-range" type="range" min="500" max="2800" value="2000" disabled><div class="range-ends"><span>500 MHz</span><span>2800 MHz</span></div></div>
   <div class="freq-row"><div class="freq-label"><strong>Big cores · CPUs 6–7</strong><span class="freq-value">750–3000 MHz</span></div><input class="freq-range" type="range" min="750" max="3000" value="2200" disabled><div class="range-ends"><span>750 MHz</span><span>3000 MHz</span></div></div>
-  <div class="confirm-preview">Confirmation design: Little above 2300 MHz or Big above 2500 MHz would require an additional warning confirmation. No frequency can be applied from this preview.</div>
+  <div class="confirm-preview"><strong>Frequency caution thresholds</strong><p>Little: above 2300 MHz — show a high-frequency warning.</p><p>Big: above 2500 MHz — show a high-frequency warning.</p><p>These are caution thresholds only, not verified safe operating limits. The preview is disabled and cannot apply a frequency.</p></div>
   <button class="disabled-action" type="button" disabled>Apply settings · unavailable</button>
   <p class="small">OFF is shown as the requested design state only. Unloading the kernel module or restoring kernel settings is not implemented here.</p>
 </div></section>
