@@ -135,7 +135,46 @@ async function cpuModuleLoaded() {
   return (await read("if grep -q '^cpu_oc ' /proc/modules; then echo yes; else echo no; fi")) === 'yes';
 }
 
+const CPU_LOCK_STATE = CPU_MODULE_DIR + '/.cpu-frequency-lock-state';
+
+async function restoreCpuFrequencyLock() {
+  const state = await read('if [ -f ' + CPU_LOCK_STATE + ' ]; then cat ' + CPU_LOCK_STATE + '; fi');
+  if (!state) return;
+  const values = state.split(/\\r?\\n/).map(Number);
+  if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
+    throw new Error('Saved CPU frequency state is invalid');
+  }
+  const [min0, max0, min6, max6] = values;
+  await read('echo ' + max0 + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
+    'echo ' + min0 + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
+    'echo ' + max6 + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq && ' +
+    'echo ' + min6 + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq && rm -f ' + CPU_LOCK_STATE);
+}
+
+async function lockCpuFrequencies(littleKhz, bigKhz) {
+  const raw = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
+  const values = raw.split(/\\r?\\n/).map(Number);
+  if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
+    throw new Error('Could not read current CPU frequency limits');
+  }
+  await read('printf \'%s\\n\' ' + values.join(' ') + ' > ' + CPU_LOCK_STATE);
+  try {
+    await read('echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
+      'echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
+      'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq && ' +
+      'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq');
+    const check = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
+    if (check !== [littleKhz, littleKhz, bigKhz, bigKhz].join('\\n')) {
+      throw new Error('The kernel did not accept the exact locked frequencies');
+    }
+  } catch (error) {
+    await restoreCpuFrequencyLock().catch(() => {});
+    throw error;
+  }
+}
+
 async function unloadCpuModule() {
+  await restoreCpuFrequencyLock();
   if (!(await cpuModuleLoaded())) return;
   await ensureLoaderExecutable();
   const result = await exec(CPU_MODULE_DIR + '/loader -r cpu_oc');
@@ -186,6 +225,9 @@ async function loadCpuModule() {
   if (!(actual.policy0 >= littleKhz && actual.policy6 >= bigKhz)) {
     await unloadCpuModule();
     throw new Error('Module loaded, but both requested CPU maximums were not confirmed; module was unloaded');
+  }
+  if ($('cpu-lock-frequency').checked) {
+    await lockCpuFrequencies(littleKhz, bigKhz);
   }
 }
 
