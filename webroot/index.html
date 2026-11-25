@@ -32,6 +32,9 @@
 </section>
 <section id="cpu-page" class="page"><button class="back" id="back-cpu" type="button">← Dashboard</button>
 <div class="hero"><h2>CPU monitor</h2><p>Helio G99 · live policy readings</p></div>
+<div class="option"><strong>CPU OC module</strong>
+<p class="reading-lines" id="cpu-oc-status">Checking cpu_oc.ko…</p>
+<p class="reading-lines" id="cpu-oc-settings">Reading module parameters…</p></div>
 <div class="option"><strong>CPU frequency by policy</strong><p class="reading-lines" id="cpu-page-readings">Waiting for CPU page…</p></div>
 <div class="small" id="cpu-page-updated">Updates only while this page is open.</div>
 <div class="notice">Read-only monitoring. CPUs sharing one cpufreq policy report a shared policy frequency, not independent per-core measurements.</div></section>
@@ -130,7 +133,17 @@ let cpuTimer = null;
 async function refreshCpuPage() {
   if (!$('cpu-page').classList.contains('active') || document.hidden) return;
   try {
-    const raw = await read("for p in /sys/devices/system/cpu/cpufreq/policy*; do [ -d \"$p\" ] || continue; printf '%s|%s|%s|%s|%s\\n' \"$(basename \"$p\")\" \"$(cat \"$p/related_cpus\" 2>/dev/null)\" \"$(cat \"$p/scaling_cur_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_min_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_max_freq\" 2>/dev/null)\"; done");
+    const [raw, ocRaw] = await Promise.all([
+      read("for p in /sys/devices/system/cpu/cpufreq/policy*; do [ -d \"$p\" ] || continue; printf '%s|%s|%s|%s|%s\\n' \"$(basename \"$p\")\" \"$(cat \"$p/related_cpus\" 2>/dev/null)\" \"$(cat \"$p/scaling_cur_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_min_freq\" 2>/dev/null)\" \"$(cat \"$p/scaling_max_freq\" 2>/dev/null)\"; done"),
+      read("if grep -q '^cpu_oc ' /proc/modules; then printf 'loaded\\n'; else printf 'not_loaded\\n'; fi; for n in apply little_khz big_khz resets; do f=/sys/module/cpu_oc/parameters/$n; if [ -r \"$f\" ]; then printf '%s=%s\\n' \"$n\" \"$(cat \"$f\")\"; else printf '%s=unavailable\\n' \"$n\"; fi; done")
+    ]);
+    const ocLines = ocRaw.split(/\\r?\\n/).filter(Boolean);
+    const ocLoaded = ocLines[0] === 'loaded';
+    show('cpu-oc-status',ocLoaded?'cpu_oc.ko is loaded':'cpu_oc.ko is not loaded');
+    const ocValues = Object.fromEntries(ocLines.slice(1).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)];}));
+    const mode = ocValues.apply === '1' ? 'Apply flag: enabled' : ocValues.apply === '0' ? 'Apply flag: dry-run' : 'Apply flag: unavailable';
+    const khz = v => v && v !== 'unavailable' && /^\\d+$/.test(v) ? (Number(v)/1000).toFixed(0)+' MHz' : 'Unavailable';
+    show('cpu-oc-settings',ocLoaded ? mode+'\\nLittle configured: '+khz(ocValues.little_khz)+'\\nBig configured: '+khz(ocValues.big_khz)+'\\nReset counter: '+(ocValues.resets ?? 'Unavailable') : 'Module parameters are available only while cpu_oc.ko is loaded.');
     const lines = raw.split(/\r?\n/).filter(Boolean).map(line => {
       const [policy, cpus, cur, min, max] = line.split('|');
       const mhz = value => Number.isFinite(Number(value)) ? (Number(value)/1000).toFixed(0)+' MHz' : '--';
