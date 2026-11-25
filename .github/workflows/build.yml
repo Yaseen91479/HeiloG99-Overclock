@@ -173,9 +173,9 @@ jobs:
           [ -s "$MODPATH/webroot/index.html" ] || abort "webroot/index.html missing"
           [ -s "$MODPATH/cpu_oc.ko" ] || abort "cpu_oc.ko missing"
           [ -s "$MODPATH/loader" ] || abort "loader missing"
-          chmod 0755 "$MODPATH/loader" || abort "Cannot make loader executable"
           find "$MODPATH" -type d -exec chmod 0755 {} \; 2>/dev/null
           find "$MODPATH" -type f -exec chmod 0644 {} \; 2>/dev/null
+          chmod 0755 "$MODPATH/loader" || abort "Cannot make loader executable"
           ui_print "Installed dashboard, CPU module, and loader."
           ui_print "CPU OC remains OFF until enabled from the CPU page."
           exit 0
