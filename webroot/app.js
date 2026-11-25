@@ -140,7 +140,7 @@ const CPU_LOCK_STATE = CPU_MODULE_DIR + '/.cpu-frequency-lock-state';
 async function restoreCpuFrequencyLock() {
   const state = await read('if [ -f ' + CPU_LOCK_STATE + ' ]; then cat ' + CPU_LOCK_STATE + '; fi');
   if (!state) return;
-  const values = state.split(/\\r?\\n/).map(Number);
+  const values = state.split(/\r?\n/).map(Number);
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
     throw new Error('Saved CPU frequency state is invalid');
   }
@@ -153,18 +153,18 @@ async function restoreCpuFrequencyLock() {
 
 async function lockCpuFrequencies(littleKhz, bigKhz) {
   const raw = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-  const values = raw.split(/\\r?\\n/).map(Number);
+  const values = raw.split(/\r?\n/).map(Number);
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
     throw new Error('Could not read current CPU frequency limits');
   }
-  await read('printf \'%s\\n\' ' + values.join(' ') + ' > ' + CPU_LOCK_STATE);
+  await read('printf \\'%s\\n\\' ' + values.join(' ') + ' > ' + CPU_LOCK_STATE);
   try {
     await read('echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
       'echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
       'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq && ' +
       'echo ' + bigKhz + ' > /sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq');
     const check = await read("for n in policy0 policy6; do p=/sys/devices/system/cpu/cpufreq/$n; printf '%s\\n' \"$(cat $p/scaling_min_freq)\" \"$(cat $p/scaling_max_freq)\"; done");
-    if (check !== [littleKhz, littleKhz, bigKhz, bigKhz].join('\\n')) {
+    if (check !== [littleKhz, littleKhz, bigKhz, bigKhz].join('\n')) {
       throw new Error('The kernel did not accept the exact locked frequencies');
     }
   } catch (error) {
