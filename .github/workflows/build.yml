@@ -7,7 +7,7 @@ on:
 env:
   RELEASE_TAG: kernel-src
   ASSET: SM-A075F_16_Opensource.zip
-  KREL: 6.12.69-android16-6-abA075FXXU7DZJ-4k   # Galaxy A07 Android 17 kernel release reported by the device
+  KREL: 6.12.69-android16-6-abA075FXXU7DZJ-4k   # Galaxy A07 kernel release (android16 build string)
 
 jobs:
   build:
