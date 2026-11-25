@@ -59,7 +59,12 @@
 <div class="option"><strong>Frequency range</strong><p id="gpu-page-range">--</p></div>
 <div class="option"><strong>Governor</strong><p id="gpu-page-governor">--</p></div>
 <div class="small" id="gpu-page-updated">Updates only while this page is open.</div>
-<div class="notice">This page is monitoring-only. It does not apply overclock settings or write to kernel interfaces.</div></section>
+<div class="notice">This page is monitoring-only. It does not apply overclock settings or write to kernel interfaces.</div>
+<div class="control-preview" aria-label="GPU control layout preview">
+  <div class="control-head"><div><strong>GPU frequency control</strong><div class="small">Layout preview · not connected to the kernel</div></div><span class="pill">PREVIEW ONLY</span></div>
+  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="390" max="1100" step="10" value="390" aria-label="GPU preview frequency"><div class="range-ends"><span>390 MHz</span><span>1100 MHz</span></div></div>
+  <p class="small">This slider only changes the preview value shown here. It does not communicate with KernelSU or change GPU frequency.</p>
+</div></section>
 </main>
 <script type="module">
 import { exec } from 'kernelsu';
@@ -74,6 +79,7 @@ function updatePreviewSlider(sliderId, valueId, warningId, threshold) {
 }
 $('little-slider').addEventListener('input', () => updatePreviewSlider('little-slider','little-selected','little-warning',2300));
 $('big-slider').addEventListener('input', () => updatePreviewSlider('big-slider','big-selected','big-warning',2500));
+$('gpu-slider').addEventListener('input', () => show('gpu-selected', Number($('gpu-slider').value) + ' MHz'));
 updatePreviewSlider('little-slider','little-selected','little-warning',2300);
 updatePreviewSlider('big-slider','big-selected','big-warning',2500);
 async function read(command) {
