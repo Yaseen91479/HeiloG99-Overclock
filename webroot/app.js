@@ -157,7 +157,7 @@ async function lockCpuFrequencies(littleKhz, bigKhz) {
   if (values.length !== 4 || values.some(v => !Number.isInteger(v) || v <= 0)) {
     throw new Error('Could not read current CPU frequency limits');
   }
-  await read('printf \\'%s\\n\\' ' + values.join(' ') + ' > ' + CPU_LOCK_STATE);
+  await read("printf '%s\\n' " + values.join(' ') + " > " + CPU_LOCK_STATE);
   try {
     await read('echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq && ' +
       'echo ' + littleKhz + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq && ' +
