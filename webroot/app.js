@@ -30,11 +30,10 @@ function updateGpuPreview() {
   const index = 44 - Number($('gpu-slider').value); // left = OPP 44 (390 MHz), right = OPP 0 (1100 MHz)
   show('gpu-selected', GPU_OPP_MHZ[index] + ' MHz · OPP ' + index);
   show('gpu-lock-preview-status', index <= 6
-    ? 'Needs gpu_oc (raises the GPU ceiling to this row)'
-    : 'Stock row · tick Fixed target to pin it');
+    ? 'Loads gpu_oc, then holds the GPU at this frequency until Restore stock'
+    : 'Stock row · holds the GPU at this frequency until Restore stock');
 }
 $('gpu-slider').addEventListener('input', updateGpuPreview);
-$('gpu-lock-preview').addEventListener('change', updateGpuPreview);
 updateGpuPreview();
 updatePreviewSlider('little-slider','little-selected','little-warning',2300);
 updatePreviewSlider('big-slider','big-selected','big-warning',2500);
@@ -330,7 +329,6 @@ async function unloadGpu() {
 }
 async function applyGpu() {
   const s = 44 - Number($('gpu-slider').value); // signed index 0..44
-  const lock = $('gpu-lock-preview').checked;
   if (s <= 6) {
     const has = await read('test -f ' + CPU_MODULE_DIR + '/gpu_oc.ko && echo ok || echo missing');
     if (has !== 'ok') throw new Error('gpu_oc.ko is missing from ' + CPU_MODULE_DIR);
@@ -351,9 +349,13 @@ async function applyGpu() {
       await gpuUnpin().catch(() => {});
       throw e;
     }
-    if (lock) await gpuPin(0); else await gpuUnpin();
+    try {
+      await gpuPin(0);
+    } catch (e) {
+      await unloadGpu().catch(() => {});
+      throw e;
+    }
   } else {
-    if (!lock) throw new Error('At or below 1003 MHz is stock. Tick Fixed target to pin it.');
     await gpuPin(s - 7);
   }
 }
