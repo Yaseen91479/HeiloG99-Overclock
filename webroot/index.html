@@ -1,61 +1,154 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#10131b"><title>Helio G99 Control</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>Helio G99</title>
 <style>
-:root{color-scheme:dark;--bg:#10131b;--panel:#191e2a;--panel2:#202737;--line:#2c3547;--text:#f2f5fb;--muted:#9ba8bc;--accent:#8b9cff;--green:#75d6a2;--amber:#f2c477;--radius:20px}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:max(18px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
-.app{max-width:620px;margin:0 auto}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 2px 22px}h1{font-size:21px;margin:0;letter-spacing:-.5px}.sub{color:var(--muted);font-size:12px;margin-top:4px}.version{color:var(--accent);background:#252d46;padding:7px 10px;border-radius:99px;font-size:11px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}.tile{text-align:left;color:inherit;width:100%;cursor:pointer;font:inherit}.tile:active{transform:scale(.985)}.tile-head{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px}.glyph{display:grid;place-items:center;width:38px;height:38px;border-radius:13px;background:var(--panel2);color:var(--accent);font-size:19px}.metric{font-size:25px;font-weight:700;margin-top:17px;letter-spacing:-.8px}.hint{color:var(--muted);font-size:12px;margin-top:3px}
-.section{margin-top:14px}.section-title{font-size:14px;font-weight:650;margin:0 0 11px 2px}.readout{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.readout:last-child{border-bottom:0}.readout span:first-child{color:var(--muted)}.value{font-variant-numeric:tabular-nums;font-weight:650}.status{display:flex;align-items:center;gap:8px;color:var(--amber);font-size:12px;margin-top:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}.dot.ok{background:var(--green)}.module-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}.module-row+.module-row{border-top:1px solid var(--line)}.pill{font-size:11px;padding:5px 9px;border-radius:99px;color:var(--muted);background:var(--panel2)}.page{display:none}.page.active{display:block}.back{border:0;color:var(--accent);background:transparent;padding:8px 0 16px;font:inherit;cursor:pointer}.hero{padding:20px;background:linear-gradient(145deg,#242d49,#191e2a 70%);border:1px solid #384360;border-radius:var(--radius)}.hero h2{margin:0 0 5px;font-size:20px}.hero p{margin:0;color:var(--muted);font-size:12px}.option{margin-top:11px;padding:15px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.option strong{display:block;font-size:14px}.option p{margin:5px 0 0;color:var(--muted);font-size:12px}.notice{color:var(--amber);font-size:12px;margin-top:14px;padding:12px;background:#332a1c;border-radius:13px}footer{color:#778398;font-size:11px;text-align:center;margin:22px 0 4px}.actions{display:flex;gap:8px;margin-top:12px}.action{border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);padding:10px 13px;font:inherit;font-size:12px;cursor:pointer}.action:disabled{opacity:.5;cursor:default}.small{font-size:11px;color:var(--muted)}.switch-action{min-width:112px}.switch-action.active{border-color:var(--green);color:var(--green)}.control-preview{margin-top:12px;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.control-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.switch-preview{width:48px;height:27px;border:1px solid #56617a;border-radius:99px;background:#30394b;position:relative;opacity:.55}.switch-preview:after{content:"";position:absolute;left:3px;top:3px;width:19px;height:19px;border-radius:50%;background:#aeb8ca}.freq-row{margin-top:17px}.freq-label{display:flex;justify-content:space-between;gap:8px;font-size:13px}.freq-value{font-weight:700;font-variant-numeric:tabular-nums}.freq-range{width:100%;margin:13px 0 4px;accent-color:var(--accent)}.lock-option{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px;color:var(--text)}.lock-option input{width:17px;height:17px;accent-color:var(--accent)}.range-ends{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.confirm-preview{margin-top:13px;padding:11px;border:1px solid #66512d;background:#332a1c;border-radius:12px;color:var(--amber);font-size:12px}.disabled-action{margin-top:14px;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--muted);font:inherit;opacity:.55}.cluster-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.cluster{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}.cluster h3{font-size:14px;margin:0 0 10px}.cluster .cluster-value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}.cluster .cluster-meta{font-size:11px;color:var(--muted);line-height:1.8;margin-top:8px}.locked{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:99px;background:var(--panel2);color:var(--muted);font-size:10px;margin-top:10px}.cluster-note{margin-top:12px;padding:12px;border-radius:13px;background:#252d46;color:#c8d2ff;font-size:11px;line-height:1.6}@media(max-width:380px){.cluster-grid{grid-template-columns:1fr}}.reading-lines{white-space:pre-line;line-height:1.8}@media(max-width:380px){.grid{gap:9px}.card{padding:13px}.metric{font-size:22px}}
+:root{color-scheme:dark;--bg:#0d1117;--card:#161b22;--card2:#11161d;--line:#262d36;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--warn:#e3b341;--ok:#3fb950;--bad:#f85149}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(20px,env(safe-area-inset-top)) 18px max(28px,env(safe-area-inset-bottom))}
+.app{max-width:560px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.top{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 22px}
+h1{font-size:22px;font-weight:650;margin:0;letter-spacing:-.3px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.err{color:var(--bad);font-size:12px;margin:-10px 2px 16px}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:5px;padding:18px 16px;background:var(--card);border:1px solid var(--line);border-radius:18px;cursor:pointer}
+.tile:active{background:#1c232d}
+.label{color:var(--muted);font-size:13px}
+.value{font-size:28px;font-weight:650;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.sub{color:var(--muted);font-size:12px}
+
+.head{display:flex;align-items:center;gap:6px;margin:2px 0 20px}
+.back{all:unset;box-sizing:border-box;width:40px;height:40px;display:grid;place-items:center;font-size:26px;color:var(--accent);cursor:pointer;margin-left:-8px}
+.head h2{margin:0;font-size:20px;font-weight:650}
+.hero{font-size:46px;font-weight:650;letter-spacing:-1px;font-variant-numeric:tabular-nums;margin:0 2px}
+.hero small{font-size:18px;color:var(--muted);font-weight:500;margin-left:4px}
+.state{color:var(--muted);font-size:13px;margin:2px 2px 0}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:16px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:500;color:var(--muted)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.row:first-of-type{border-top:0}
+.row .k{color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 12px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:3px}
+
+.cores{display:grid;gap:8px;margin-bottom:12px}
+.cores.l{grid-template-columns:repeat(3,1fr)}.cores.b{grid-template-columns:repeat(2,1fr)}
+.core{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+.core b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+.core span{font-size:11px;color:var(--muted)}
+
+.slider-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
+.slider-row b{font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
+.warn{color:var(--warn);font-size:12px;margin:2px 0 10px}
+.check{display:flex;align-items:center;gap:10px;margin:14px 0 4px;font-size:14px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.actions{display:flex;gap:10px;margin-top:16px}
+.btn{all:unset;box-sizing:border-box;flex:1;text-align:center;padding:13px;border-radius:13px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--accent);color:#04111f}
+.btn.ghost{background:var(--card2);border:1px solid var(--line);color:var(--text)}
+.btn[disabled]{opacity:.45;cursor:default}
+.status{color:var(--muted);font-size:12px;margin-top:12px;min-height:16px}
+.hint{color:var(--muted);font-size:12px;margin-top:2px}
+.seg{display:flex;gap:8px;margin:12px 0 8px}
+.seg button{all:unset;box-sizing:border-box;flex:1;text-align:center;padding:11px 4px;border-radius:12px;border:1px solid var(--line);background:var(--card2);font-size:14px;cursor:pointer}
+.seg button.on{border-color:var(--accent);color:var(--accent)}
+.seg button[disabled]{opacity:.35;cursor:default}
 </style>
 </head>
-<body><main class="app">
-<section id="home" class="page active">
-<header><div><h1>Helio G99 Control</h1><div class="sub">Helio G99 · CPU &amp; GPU control</div></div><span class="version">v0.2.0</span></header>
-<div class="grid">
-<button class="card tile" type="button" id="cpu-tile"><div class="tile-head"><span>CPU</span><span class="glyph">◈</span></div><div class="metric" id="cpu-main">-- GHz</div><div class="hint" id="cpu-hint">Waiting for KernelSU</div></button>
-<button class="card tile" type="button" id="open-gpu"><div class="tile-head"><span>GPU</span><span class="glyph">▦</span></div><div class="metric">GPU</div><div class="hint">Open GPU page →</div></button>
-</div>
-<section class="section card"><h2 class="section-title">Live readings</h2>
-<div class="readout"><span>Highest thermal sensor</span><span class="value" id="temp">--</span></div>
-<div class="readout"><span>GPU frequency</span><span class="value" id="gpu-freq">Not exposed</span></div>
-<div class="readout"><span>RAM used</span><span class="value" id="ram">--</span></div>
-<div class="readout"><span>CPU policies</span><span class="value" id="policies">--</span></div>
-<div class="status"><i class="dot" id="connection-dot"></i><span id="connection">Connecting to KernelSU API…</span></div>
-<div class="actions"><button class="action" id="refresh" type="button">Refresh readings</button><span class="small" id="updated">Not updated</span></div></section>
-<footer>*Thermal reading is the highest readable zone; its hardware type is not identified. CPU and GPU controls are experimental and revert on reboot.</footer>
+<body>
+<main class="app">
+
+<section id="page-home" class="page active">
+  <div class="top"><h1>Helio G99</h1><i class="dot" id="dot"></i></div>
+  <p class="err" id="err" hidden></p>
+  <div class="tiles">
+    <button class="tile" type="button" data-go="cpu"><span class="label">CPU</span><span class="value" id="t-cpu">--</span><span class="sub" id="t-cpu-sub">--</span></button>
+    <button class="tile" type="button" data-go="gpu"><span class="label">GPU</span><span class="value" id="t-gpu">--</span><span class="sub" id="t-gpu-sub">--</span></button>
+    <button class="tile" type="button" data-go="mem"><span class="label">Memory</span><span class="value" id="t-mem">--</span><span class="sub" id="t-mem-sub">--</span></button>
+    <button class="tile" type="button" data-go="temp"><span class="label">Temperature</span><span class="value" id="t-temp">--</span><span class="sub" id="t-temp-sub">hottest sensor</span></button>
+  </div>
 </section>
-<section id="cpu-page" class="page"><button class="back" id="back-cpu" type="button">← Dashboard</button>
-<div class="hero"><h2>CPU control</h2><p>Helio G99</p></div>
-<div class="control-preview" aria-label="CPU control">
-  <div class="control-head"><div><strong>Overclock controls</strong></div><button class="action switch-action" id="cpu-toggle" type="button" aria-pressed="false">Enable CPU OC</button></div>
-  <p class="small" id="cpu-control-status" role="status">Ready</p>
-  <div class="freq-row"><div class="freq-label"><strong>Little cores · CPUs 0–5</strong><span class="freq-value" id="little-selected">2000 MHz</span></div><input class="freq-range" id="little-slider" type="range" min="500" max="2800" step="25" value="2300" aria-label="Little CPU maximum frequency"><div class="range-ends"><span>500 MHz</span><span>2800 MHz</span></div></div>
-  <div class="freq-row"><div class="freq-label"><strong>Big cores · CPUs 6–7</strong><span class="freq-value" id="big-selected">2200 MHz</span></div><input class="freq-range" id="big-slider" type="range" min="750" max="3000" step="25" value="2500" aria-label="Big CPU maximum frequency"><div class="range-ends"><span>750 MHz</span><span>3000 MHz</span></div></div>
-  <div class="confirm-preview" id="little-warning" hidden><strong>Little frequency warning</strong><p>Selected value is above 2300 MHz. This is a caution threshold, not a verified safe limit.</p></div>
-  <div class="confirm-preview" id="big-warning" hidden><strong>Big frequency warning</strong><p>Selected value is above 2500 MHz. This is a caution threshold, not a verified safe limit.</p></div>
-  <p class="small">Choose the target maximum for each CPU policy. The loader validates each value against the live policy maximum and the module’s +400 MHz limit.</p>
-  <label class="lock-option"><input id="cpu-lock-frequency" type="checkbox"> Lock selected frequency</label>
-  <button class="action" id="cpu-apply" type="button">Apply selected CPU frequencies</button>
-  <p class="small">Disable CPU OC to restore the original CPU limits.</p>
-</div></section>
-<section id="gpu-page" class="page"><button class="back" id="back-home" type="button">← Dashboard</button>
-<div class="hero"><h2>GPU control</h2><p>Mali-G57 MC2 · Helio G99</p></div>
-<div class="option"><strong>Module status</strong><p id="gpu-page-status">Checking kernel module list…</p></div>
-<div class="option"><strong>Current GPU frequency</strong><p id="gpu-page-freq">Waiting for GPU page…</p></div>
-<div class="option"><strong>Frequency range</strong><p id="gpu-page-range">--</p></div>
-<div class="option"><strong>Governor</strong><p id="gpu-page-governor">--</p></div>
-<div class="small" id="gpu-page-updated">Updates only while this page is open.</div>
-<div class="control-preview" aria-label="GPU control">
-  <div class="control-head"><div><strong>GPU frequency control</strong><div class="small">Rows 0–6 (1017–1100 MHz) are hidden by the segment limit</div></div><span class="pill">EXPERIMENTAL</span></div>
-  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="0" max="44" step="1" value="44" aria-label="GPU OPP selection"><div class="range-ends"><span>390 MHz · OPP 44</span><span>1100 MHz · OPP 0</span></div></div>
-  <p class="small" id="gpu-lock-preview-status"></p>
-  <p class="small" id="gpu-control-status" role="status">Ready</p>
-  <div class="actions"><button class="action" id="gpu-apply" type="button">Apply</button><button class="action" id="gpu-disable" type="button">Restore stock</button></div>
-  <p class="small">Pick a frequency and press Apply: the GPU is held at it. OPP 0–6 (1017–1100 MHz) load gpu_oc first (voltage comes from the factory table). Restore stock returns the GPU to automatic. Everything reverts on reboot.</p>
-</div></section>
+
+<section id="page-cpu" class="page">
+  <div class="head"><button class="back" type="button" data-go="home" aria-label="Back">‹</button><h2>CPU</h2></div>
+  <div class="card">
+    <h3>Little cores</h3>
+    <div class="cores l"><div class="core"><b id="core-0">--</b><span>CPU 0</span></div><div class="core"><b id="core-1">--</b><span>CPU 1</span></div><div class="core"><b id="core-2">--</b><span>CPU 2</span></div><div class="core"><b id="core-3">--</b><span>CPU 3</span></div><div class="core"><b id="core-4">--</b><span>CPU 4</span></div><div class="core"><b id="core-5">--</b><span>CPU 5</span></div></div>
+    <h3>Big cores</h3>
+    <div class="cores b" style="margin-bottom:0"><div class="core"><b id="core-6">--</b><span>CPU 6</span></div><div class="core"><b id="core-7">--</b><span>CPU 7</span></div></div>
+  </div>
+  <div class="card">
+    <h3>Maximum frequency</h3>
+    <div class="slider-row"><span>Little</span><b id="little-val">--</b></div>
+    <input id="little-slider" type="range" min="500" max="2400" step="25" value="2300" aria-label="Little maximum">
+    <p class="warn" id="little-warn" hidden>Above 2400 MHz: not verified safe.</p>
+    <div class="slider-row"><span>Big</span><b id="big-val">--</b></div>
+    <input id="big-slider" type="range" min="725" max="2600" step="25" value="2500" aria-label="Big maximum">
+    <p class="warn" id="big-warn" hidden>Above 2500 MHz: not verified safe.</p>
+    <label class="check"><input id="cpu-lock" type="checkbox"> Lock frequency</label>
+    <div class="actions"><button class="btn primary" id="cpu-apply" type="button">Apply</button><button class="btn ghost" id="cpu-restore" type="button">Restore stock</button></div>
+    <p class="status" id="cpu-status" role="status"></p>
+  </div>
+</section>
+
+<section id="page-gpu" class="page">
+  <div class="head"><button class="back" type="button" data-go="home" aria-label="Back">‹</button><h2>GPU</h2></div>
+  <p class="hero"><span id="gpu-live">--</span><small>MHz</small></p>
+  <p class="state" id="gpu-state">--</p>
+  <div class="card">
+    <h3>Frequency</h3>
+    <div class="slider-row"><span>Target</span><b id="gpu-val">--</b></div>
+    <input id="gpu-slider" type="range" min="0" max="44" step="1" value="44" aria-label="GPU frequency">
+    <p class="hint" id="gpu-hint"></p>
+    <div class="actions"><button class="btn primary" id="gpu-apply" type="button">Apply</button><button class="btn ghost" id="gpu-restore" type="button">Restore stock</button></div>
+    <p class="status" id="gpu-status" role="status"></p>
+  </div>
+</section>
+
+<section id="page-mem" class="page">
+  <div class="head"><button class="back" type="button" data-go="home" aria-label="Back">‹</button><h2>Memory</h2></div>
+  <p class="hero"><span id="m-used">--</span><small>GB used</small></p>
+  <div class="card">
+    <h3>RAM</h3>
+    <div class="bar"><i id="bar-ram"></i></div>
+    <div class="row"><span class="k">Available</span><span id="m-avail">--</span></div>
+    <div class="row"><span class="k">Total</span><span id="m-total">--</span></div>
+  </div>
+  <div class="card">
+    <h3>ZRAM</h3>
+    <div class="bar"><i id="bar-zram"></i></div>
+    <div class="row"><span class="k">Used</span><span id="z-used">--</span></div>
+    <div class="row"><span class="k">Size</span><span id="z-total">--</span></div>
+  </div>
+  <div class="card">
+    <h3>ZRAM algorithm</h3>
+    <div class="row"><span class="k">Current</span><b id="z-alg">--</b></div>
+    <div class="seg" id="z-seg">
+      <button type="button" data-alg="lz4">LZ4</button>
+      <button type="button" data-alg="lz4-rle">LZ4-RLE</button>
+      <button type="button" data-alg="zstd">ZSTD</button>
+    </div>
+    <p class="hint" id="z-hint"></p>
+    <div class="actions"><button class="btn primary" id="z-apply" type="button">Change algorithm</button></div>
+    <p class="status" id="z-status" role="status"></p>
+  </div>
+</section>
+
+<section id="page-temp" class="page">
+  <div class="head"><button class="back" type="button" data-go="home" aria-label="Back">‹</button><h2>Temperature</h2></div>
+  <p class="hero"><span id="temp-hot">--</span><small>°C</small></p>
+  <div class="card" id="temp-list"></div>
+</section>
+
 </main>
 <script src="./app.js"></script>
-</body></html>
+</body>
+</html>
