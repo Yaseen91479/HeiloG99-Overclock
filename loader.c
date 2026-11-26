@@ -67,24 +67,25 @@ int main(int argc, char **argv)
 		 * g_gpu entry in kallsyms. Manual a1= overrides are not accepted. */
 		g = sym("g_gpu");
 		if (!g) {
-			fprintf(stderr, "g_gpu symbol not found in /proc/kallsyms (need root)\\n");
+			fprintf(stderr, "g_gpu symbol not found in /proc/kallsyms (need root)\n");
 			return 1;
 		}
 		for (i = 2; i < argc; i++) {
 			if (!strncmp(argv[i], "a1=", 3)) {
-				fprintf(stderr, "a1 is auto-detected; do not pass it manually\\n");
+				fprintf(stderr, "a1 is auto-detected; do not pass it manually\n");
 				return 1;
 			}
 			if (strlen(params) + strlen(argv[i]) + 2 >= sizeof(params)) {
-				fprintf(stderr, "module parameters too long\\n");
+				fprintf(stderr, "module parameters too long\n");
 				return 1;
 			}
 			strcat(params, argv[i]);
 			strcat(params, " ");
 		}
+		/* 0x prefix is required: the kernel parses ulong params with base 0 */
 		snprintf(params + strlen(params), sizeof(params) - strlen(params),
-			 "a1=%lx", g);
-		fprintf(stderr, "GPU A1 = %lx (first g_gpu match)\\n", g);
+			 "a1=0x%lx", g);
+		fprintf(stderr, "GPU A1 = %lx (first g_gpu match)\n", g);
 
 	} else {
 		g = sym("cpufreq_cpu_get");
