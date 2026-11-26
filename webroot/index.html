@@ -50,12 +50,11 @@
 <div class="small" id="gpu-page-updated">Updates only while this page is open.</div>
 <div class="control-preview" aria-label="GPU control">
   <div class="control-head"><div><strong>GPU frequency control</strong><div class="small">Rows 0–6 (1017–1100 MHz) are hidden by the segment limit</div></div><span class="pill">EXPERIMENTAL</span></div>
-  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="0" max="44" step="1" value="0" aria-label="GPU OPP selection"><div class="range-ends"><span>390 MHz · OPP 44</span><span>1100 MHz · OPP 0</span></div></div>
-  <label class="lock-option"><input id="gpu-lock-preview" type="checkbox"> Fixed target (pin this frequency)</label>
+  <div class="freq-row"><div class="freq-label"><strong>Mali-G57 MC2</strong><span class="freq-value" id="gpu-selected">390 MHz</span></div><input class="freq-range" id="gpu-slider" type="range" min="0" max="44" step="1" value="44" aria-label="GPU OPP selection"><div class="range-ends"><span>390 MHz · OPP 44</span><span>1100 MHz · OPP 0</span></div></div>
   <p class="small" id="gpu-lock-preview-status"></p>
   <p class="small" id="gpu-control-status" role="status">Ready</p>
   <div class="actions"><button class="action" id="gpu-apply" type="button">Apply</button><button class="action" id="gpu-disable" type="button">Restore stock</button></div>
-  <p class="small">OPP 0–6 loads gpu_oc and raises the GPU ceiling to that row (voltage comes from the factory table). OPP 7 and below are stock rows: tick Fixed target to pin one. Everything reverts on reboot.</p>
+  <p class="small">Pick a frequency and press Apply: the GPU is held at it. OPP 0–6 (1017–1100 MHz) load gpu_oc first (voltage comes from the factory table). Restore stock returns the GPU to automatic. Everything reverts on reboot.</p>
 </div></section>
 </main>
 <script src="./app.js"></script>
