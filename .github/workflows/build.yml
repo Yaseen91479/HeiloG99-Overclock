@@ -90,6 +90,7 @@ jobs:
           tail -15 /tmp/mod.log
           ls -la modbuild/cpu_oc.ko modbuild/gpu_oc.ko
           test "$(modinfo -F vermagic modbuild/cpu_oc.ko | awk '{print $1}')" = "$KREL"
+          test "$(modinfo -F vermagic modbuild/gpu_oc.ko | awk '{print $1}')" = "$KREL"
           {
             echo "=== modinfo ==="; modinfo modbuild/cpu_oc.ko; modinfo modbuild/gpu_oc.ko
             echo "=== undefined symbols ==="; llvm-nm -u modbuild/cpu_oc.ko; llvm-nm -u modbuild/gpu_oc.ko
@@ -132,7 +133,7 @@ jobs:
         with:
           name: loader
           path: artifacts/loader
-      - name: Package KernelSU module with CPU controls
+      - name: Package KernelSU module with CPU and GPU controls
         shell: bash
         run: |
           set -euo pipefail
@@ -141,8 +142,9 @@ jobs:
           cp service.sh package/service.sh
           cp -R webroot package/webroot
           cp artifacts/cpu-oc/modbuild/cpu_oc.ko package/cpu_oc.ko
+          cp artifacts/cpu-oc/modbuild/gpu_oc.ko package/gpu_oc.ko
           cp artifacts/loader/loader package/loader
-          test -s package/cpu_oc.ko && test -s package/loader
+          test -s package/cpu_oc.ko && test -s package/gpu_oc.ko && test -s package/loader
           chmod 0755 package/loader
 
           # Bundle the KernelSU JavaScript API import for Android WebView.
@@ -172,18 +174,19 @@ jobs:
 
           ui_print "Installing Helio G99 Control WebUI"
           mkdir -p "$MODPATH" || abort "Cannot create module directory"
-          unzip -o "$ZIPFILE" "module.prop" "service.sh" "webroot/*" "cpu_oc.ko" "loader" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
+          unzip -o "$ZIPFILE" "module.prop" "service.sh" "webroot/*" "cpu_oc.ko" "gpu_oc.ko" "loader" -d "$MODPATH" >/dev/null 2>&1 || abort "Cannot extract WebUI files"
           [ -s "$MODPATH/module.prop" ] || abort "module.prop missing"
           [ -s "$MODPATH/service.sh" ] || abort "service.sh missing"
           [ -s "$MODPATH/webroot/index.html" ] || abort "webroot/index.html missing"
           [ -s "$MODPATH/cpu_oc.ko" ] || abort "cpu_oc.ko missing"
+          [ -s "$MODPATH/gpu_oc.ko" ] || abort "gpu_oc.ko missing"
           [ -s "$MODPATH/loader" ] || abort "loader missing"
           find "$MODPATH" -type d -exec chmod 0755 {} \; 2>/dev/null
           find "$MODPATH" -type f -exec chmod 0644 {} \; 2>/dev/null
           chmod 0755 "$MODPATH/loader" || abort "Cannot make loader executable"
           chmod 0755 "$MODPATH/service.sh" || abort "Cannot make service executable"
-          ui_print "Installed dashboard, CPU module, and loader."
-          ui_print "CPU OC remains OFF until enabled from the CPU page."
+          ui_print "Installed dashboard, CPU module, GPU module, and loader."
+          ui_print "CPU and GPU changes stay OFF until applied from the app pages."
           exit 0
           EOF
           chmod 0755 package/META-INF/com/google/android/update-binary
