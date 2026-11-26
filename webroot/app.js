@@ -1,7 +1,22 @@
-import { exec } from 'kernelsu';
+// KernelSU WebUI bridge (no bundler needed): wraps the global `ksu.exec`.
+function exec(command, options = {}) {
+  return new Promise((resolve, reject) => {
+    const cb = 'exec_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    window[cb] = (errno, stdout, stderr) => {
+      resolve({ errno, stdout, stderr });
+      delete window[cb];
+    };
+    try {
+      ksu.exec(command, JSON.stringify(options), cb);
+    } catch (error) {
+      reject(error);
+      delete window[cb];
+    }
+  });
+}
 
 const $ = (id) => document.getElementById(id);
-const show = (id, value) => { $(id).textContent = value; };
+const show = (id, value) => { const el = $(id); if (el) el.textContent = value; };
 function updatePreviewSlider(sliderId, valueId, warningId, threshold) {
   const slider = $(sliderId);
   const value = Number(slider.value);
@@ -14,7 +29,9 @@ const GPU_OPP_MHZ = [1100, 1086, 1072, 1058, 1045, 1031, 1017, 1003, 990, 976, 9
 function updateGpuPreview() {
   const index = Number($('gpu-slider').value);
   show('gpu-selected', GPU_OPP_MHZ[index] + ' MHz · OPP ' + index);
-  show('gpu-lock-preview-status', $('gpu-lock-preview').checked ? 'Fixed-target option selected · preview only' : 'Dynamic GPU frequency · preview only');
+  show('gpu-lock-preview-status', index <= 6
+    ? 'Needs gpu_oc (raises the GPU ceiling to this row)'
+    : 'Stock row · tick Fixed target to pin it');
 }
 $('gpu-slider').addEventListener('input', updateGpuPreview);
 $('gpu-lock-preview').addEventListener('change', updateGpuPreview);
@@ -53,11 +70,9 @@ async function refresh() {
     const temps = tempRaw.split('\n').map(Number).filter(v=>Number.isFinite(v)&&v>0&&v<1000000);
     show('temp', temps.length ? (Math.max(...temps)/1000).toFixed(1)+' °C*' : 'Unavailable');
     show('ram', memRaw || 'Unavailable');
-    const cpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('cpu_oc '));
     const gpuLoaded = moduleRaw.split('\n').some(line=>line.startsWith('gpu_oc '));
-      show('gpu-module',gpuLoaded?'Loaded':'Not loaded');
-    show('gpu-page-status',gpuLoaded?'gpu_oc.ko is listed in /proc/modules.':'gpu_oc.ko is not listed in /proc/modules.');
-    show('connection','Connected · read-only data');
+    show('gpu-page-status',gpuLoaded?'gpu_oc.ko is loaded.':'gpu_oc.ko is not loaded (stock GPU limits).');
+    show('connection','Connected');
     $('connection-dot').classList.add('ok');
     show('updated','Updated '+new Date().toLocaleTimeString());
   } catch (error) {
@@ -284,5 +299,76 @@ async function runCpuAction(action) {
 
 $('cpu-toggle').addEventListener('click', () => runCpuAction('off'));
 $('cpu-apply').addEventListener('click', () => runCpuAction('on'));
+
+// ---------------- GPU control ----------------
+const GPU_PROC = '/proc/gpufreqv2';
+const GPU_SAFE_IDX = 20; // stock working row, never touched by gpu_oc
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let gpuBusy = false;
+
+async function gpuModuleLoaded() {
+  return (await read("grep -q '^gpu_oc ' /proc/modules && echo yes || echo no")) === 'yes';
+}
+async function gpuPin(idx) {
+  await read('echo ' + idx + ' > ' + GPU_PROC + '/fix_target_opp_index');
+  await sleep(600);
+  const st = await read('grep GPU-OPP ' + GPU_PROC + '/gpufreq_status');
+  const m = st.match(/Index:\s*(\d+)/);
+  if (!m || Number(m[1]) !== idx) throw new Error('GPU did not move to OPP ' + idx);
+}
+async function gpuUnpin() {
+  await read('echo -1 > ' + GPU_PROC + '/fix_target_opp_index');
+  const s = await read('cat ' + GPU_PROC + '/fix_target_opp_index');
+  if (!/disabled/i.test(s)) throw new Error('Fixed OPP could not be disabled');
+}
+async function unloadGpu() {
+  if (!(await gpuModuleLoaded())) { await gpuUnpin().catch(() => {}); return; }
+  await gpuPin(GPU_SAFE_IDX); // row 0 must not be in use while it is restored
+  const r = await exec(CPU_MODULE_DIR + '/loader -r gpu_oc');
+  if (!r || r.errno !== 0) throw new Error(r?.stderr || 'Could not unload gpu_oc');
+  await gpuUnpin();
+}
+async function applyGpu() {
+  const s = Number($('gpu-slider').value); // signed index 0..44
+  const lock = $('gpu-lock-preview').checked;
+  await unloadGpu();
+  if (s <= 6) {
+    await ensureLoaderExecutable();
+    await gpuPin(GPU_SAFE_IDX);
+    try {
+      const r = await exec(CPU_MODULE_DIR + '/loader ' + CPU_MODULE_DIR + '/gpu_oc.ko apply=1 sidx=' + s);
+      if (!r || r.errno !== 0) throw new Error(r?.stderr || 'gpu_oc load failed');
+      const top = await read('head -1 ' + GPU_PROC + '/gpu_working_opp_table');
+      const f = top.match(/freq:\s*(\d+)/);
+      if (!f || Number(f[1]) !== GPU_OPP_MHZ[s] * 1000)
+        throw new Error('gpu_oc did not apply (got ' + (f ? f[1] : 'unknown') + ')');
+    } catch (e) {
+      await exec(CPU_MODULE_DIR + '/loader -r gpu_oc').catch(() => {});
+      await gpuUnpin().catch(() => {});
+      throw e;
+    }
+    if (lock) await gpuPin(0); else await gpuUnpin();
+  } else {
+    if (!lock) throw new Error('At or below 1003 MHz is stock. Tick Fixed target to pin it.');
+    await gpuPin(s - 7);
+  }
+}
+async function runGpuAction(action) {
+  if (gpuBusy) return;
+  gpuBusy = true;
+  const a = $('gpu-apply'), d = $('gpu-disable');
+  a.disabled = true; d.disabled = true;
+  show('gpu-control-status', action === 'off' ? 'Restoring…' : 'Applying…');
+  try {
+    if (action === 'off') { await unloadGpu(); show('gpu-control-status', 'GPU stock limits restored'); }
+    else { await applyGpu(); show('gpu-control-status', 'Applied'); }
+  } catch (e) {
+    show('gpu-control-status', 'Action failed: ' + (e?.message || 'unknown error'));
+  } finally {
+    a.disabled = false; d.disabled = false; gpuBusy = false;
+  }
+}
+$('gpu-apply').addEventListener('click', () => runGpuAction('on'));
+$('gpu-disable').addEventListener('click', () => runGpuAction('off'));
 
 refresh();
