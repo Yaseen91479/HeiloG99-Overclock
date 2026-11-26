@@ -27,7 +27,7 @@ $('little-slider').addEventListener('input', () => updatePreviewSlider('little-s
 $('big-slider').addEventListener('input', () => updatePreviewSlider('big-slider','big-selected','big-warning',2500));
 const GPU_OPP_MHZ = [1100, 1086, 1072, 1058, 1045, 1031, 1017, 1003, 990, 976, 962, 948, 935, 921, 907, 893, 880, 868, 857, 846, 835, 823, 812, 801, 790, 778, 767, 756, 745, 733, 722, 711, 700, 674, 648, 622, 596, 570, 545, 519, 493, 467, 441, 415, 390];
 function updateGpuPreview() {
-  const index = Number($('gpu-slider').value);
+  const index = 44 - Number($('gpu-slider').value); // left = OPP 44 (390 MHz), right = OPP 0 (1100 MHz)
   show('gpu-selected', GPU_OPP_MHZ[index] + ' MHz · OPP ' + index);
   show('gpu-lock-preview-status', index <= 6
     ? 'Needs gpu_oc (raises the GPU ceiling to this row)'
@@ -329,8 +329,12 @@ async function unloadGpu() {
   await gpuUnpin();
 }
 async function applyGpu() {
-  const s = Number($('gpu-slider').value); // signed index 0..44
+  const s = 44 - Number($('gpu-slider').value); // signed index 0..44
   const lock = $('gpu-lock-preview').checked;
+  if (s <= 6) {
+    const has = await read('test -f ' + CPU_MODULE_DIR + '/gpu_oc.ko && echo ok || echo missing');
+    if (has !== 'ok') throw new Error('gpu_oc.ko is missing from ' + CPU_MODULE_DIR);
+  }
   await unloadGpu();
   if (s <= 6) {
     await ensureLoaderExecutable();
