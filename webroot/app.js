@@ -707,7 +707,7 @@ finish() { say "$1"; echo "$1" > "$RES"; exit "$2"; }
 rm -f "$RES"
 [ "$(id -u)" = "0" ] || finish "fail Not running as root" 1
 case "$TARGET" in
-  lzo|lz4|lz4-rle|zstd) ;;
+  lzo|lz4|lzo-rle|zstd) ;;
   *) finish "fail Unsupported choice" 1 ;;
 esac
 SIZE=$(cat "$Z/disksize")
