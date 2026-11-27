@@ -9,7 +9,7 @@ A personal KernelSU module with a small WebUI for the **MediaTek Helio G99 (MT67
 - **Live readings:** per-core CPU frequency, GPU frequency, RAM / ZRAM usage and temperature sensors.
 - **CPU control (`cpu_oc`):** raises the maximum frequency of the little and big clusters, up to 400 MHz above stock. It changes the **frequency only**. It does not change the voltage.
 - **GPU control (`gpu_oc`):** unlocks the top GPU rows (1017-1100 MHz) that the driver hides on this chip and holds the GPU at the frequency you choose. These rows and their voltages come from the factory table. Nothing is invented.
-- **ZRAM algorithm switch:** change between LZ4, LZ4-RLE and ZSTD with a free-RAM check and automatic rollback.
+- **ZRAM algorithm switch:** change between LZ4, LZO-RLE and ZSTD with a free-RAM check and automatic rollback.
 - Everything is **runtime only**. A reboot restores stock behavior. The WebUI also has Restore stock buttons.
 
 ## Kernel base
