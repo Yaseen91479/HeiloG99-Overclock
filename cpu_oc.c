@@ -22,7 +22,7 @@
 #define LUT_SIZE	0x120
 #define LUT_FREQ_MASK	0xfffU		/* MHz in bits 11:0 */
 #define MAX_REQ		16
-#define MAX_STEP_KHZ	400000		/* safety: refuse bigger jumps */
+#define MAX_STEP_KHZ	800000		/* safety: refuse bigger jumps */
 
 static bool apply;
 static ulong little_khz, big_khz, a_get, a_put, a_qos, a_addn, a_remn;
