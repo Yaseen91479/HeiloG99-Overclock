@@ -9,7 +9,7 @@
 :root{color-scheme:dark;--bg:#0d1117;--card:#161b22;--card2:#11161d;--line:#262d36;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--warn:#e3b341;--ok:#3fb950;--bad:#f85149}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button{touch-action:manipulation}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(20px,env(safe-area-inset-top)) 18px max(28px,env(safe-area-inset-bottom))}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(20px,var(--window-inset-top,env(safe-area-inset-top))) 18px max(28px,env(safe-area-inset-bottom))}
 .app{max-width:560px;margin:0 auto}
 .page{display:none}
 .page.active{display:block;animation:pageIn .18s ease-out}
@@ -113,6 +113,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
 .row:first-child{border-top:0}
 .row .k{color:var(--muted)}
 </style>
+ <link rel="stylesheet" href="/internal/insets.css">
 </head>
 <body>
 <main class="app">
@@ -220,6 +221,6 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
 </section>
 
 </main>
-<script src="./app.js?v=6"></script>
+<script src="./app.js?v=8"></script>
 </body>
 </html>
