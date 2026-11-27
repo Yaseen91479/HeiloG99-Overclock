@@ -1,5 +1,5 @@
 // Helio G99 Control - KernelSU WebUI (v4)
-const APP_VERSION = 'v6';
+const APP_VERSION = 'v7';
 
 // ---------- KernelSU bridge ----------
 // ksu.exec is synchronous: the whole page freezes while the command runs.
@@ -772,8 +772,8 @@ function disarmZram() {
 function updateZramUi() {
   setText('z-alg', zram.current ? zram.current.toUpperCase() : (live.zram ? live.zram.toUpperCase() : '--'));
   document.querySelectorAll('#z-seg button').forEach((b) => {
-    b.hidden = !zram.supported.includes(b.dataset.alg);
-    b.disabled = false;
+    b.hidden = false;
+    b.disabled = !zram.supported.includes(b.dataset.alg);
     b.classList.toggle('on', b.dataset.alg === zram.selected);
   });
   if (!busy) $('z-apply').disabled = !zram.ready;
