@@ -1,5 +1,5 @@
 // Helio G99 Control - KernelSU WebUI (v4)
-const APP_VERSION = 'v4';
+const APP_VERSION = 'v5';
 
 // ---------- KernelSU bridge ----------
 // ksu.exec is synchronous: the whole page freezes while the command runs.
@@ -120,7 +120,7 @@ const gb1 = (kb) => (kb / 1048576).toFixed(1);
 const mbText = (kb) => Math.round(kb / 1024).toLocaleString('en-US') + ' MB';
 
 // ---------- saved settings (WebView storage + a file; the newer copy wins) ----------
-const defaults = { little: 2300, big: 2500, lock: false, gpuPos: 44, gpuHeld: null, zram: '', savedAt: 0 };
+const defaults = { little: 2000, big: 2200, lock: false, gpuPos: 44, gpuHeld: null, zram: '', savedAt: 0 };
 let settings = { ...defaults };
 
 function loadLocal() {
@@ -332,7 +332,21 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------- navigation ----------
-function go(name) {
+let navEntry = false;
+history.replaceState({ webuiHome: true }, '', location.pathname + location.search);
+window.addEventListener('popstate', () => {
+  if (page !== 'home') go('home', true);
+  navEntry = false;
+});
+
+function go(name, fromPop) {
+  if (!fromPop && page === 'home' && name !== 'home' && !navEntry) {
+    history.pushState({ webuiPage: true }, '', '#'+name);
+    navEntry = true;
+  } else if (!fromPop && name === 'home' && navEntry) {
+    history.back();
+    return;
+  }
   page = name;
   document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === 'page-' + name));
   window.scrollTo(0, 0);
@@ -572,7 +586,14 @@ $('cpu-restore').addEventListener('click', () => {
   disarmCpu();
   runAction({
     status: 'cpu-status', buttons: ['cpu-apply', 'cpu-restore'], press: 'cpu-restore', working: 'Restoring…',
-    fn: unloadCpuModule, done: 'Stock limits restored', after: syncCpu
+    fn: async () => {
+      await unloadCpuModule();
+      settings.little = defaults.little;
+      settings.big = defaults.big;
+      settings.lock = defaults.lock;
+      saveSettings();
+    },
+    done: 'Stock limits restored', after: syncCpu
   });
 });
 
@@ -681,7 +702,7 @@ finish() { say "$1"; echo "$1" > "$RES"; exit "$2"; }
 rm -f "$RES"
 [ "$(id -u)" = "0" ] || finish "fail Not running as root" 1
 case "$TARGET" in
-  lz4|lz4-rle|zstd) ;;
+  lzo|lz4|lz4-rle|zstd) ;;
   *) finish "fail Unsupported choice" 1 ;;
 esac
 SIZE=$(cat "$Z/disksize")
@@ -746,7 +767,8 @@ function disarmZram() {
 function updateZramUi() {
   setText('z-alg', zram.current ? zram.current.toUpperCase() : (live.zram ? live.zram.toUpperCase() : '--'));
   document.querySelectorAll('#z-seg button').forEach((b) => {
-    b.disabled = !zram.supported.includes(b.dataset.alg);
+    b.hidden = !zram.supported.includes(b.dataset.alg);
+    b.disabled = false;
     b.classList.toggle('on', b.dataset.alg === zram.selected);
   });
   if (!busy) $('z-apply').disabled = !zram.ready;
