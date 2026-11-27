@@ -333,10 +333,15 @@ document.addEventListener('visibilitychange', () => {
 
 // ---------- navigation ----------
 let navEntry = false;
-history.replaceState({ webuiHome: true }, '', location.pathname + location.search);
+history.replaceState({ webuiHomeBase: true }, '', location.pathname + location.search);
+history.pushState({ webuiHomeGuard: true }, '', location.pathname + location.search);
 window.addEventListener('popstate', () => {
-  if (page !== 'home') go('home', true);
-  navEntry = false;
+  if (page !== 'home') {
+    go('home', true);
+    navEntry = false;
+  } else if (window.ksu && typeof window.ksu.exit === 'function') {
+    window.ksu.exit();
+  }
 });
 
 function go(name, fromPop) {
