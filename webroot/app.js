@@ -1,5 +1,5 @@
 // Helio G99 Control - KernelSU WebUI (v4)
-const APP_VERSION = 'v5';
+const APP_VERSION = 'v6';
 
 // ---------- KernelSU bridge ----------
 // ksu.exec is synchronous: the whole page freezes while the command runs.
@@ -858,6 +858,13 @@ function applySettingsUi() {
   updateGpuLabels();
 }
 async function init() {
+  try {
+    if (typeof ksu !== 'undefined' && typeof ksu.fullScreen === 'function') {
+      ksu.fullScreen(true);
+    }
+  } catch (error) {
+    console.warn('Full-screen mode is unavailable:', error);
+  }
   setText('subt', 'Galaxy A07 · app ' + APP_VERSION);
   settings = { ...defaults, ...(loadLocal() || {}) };
   applySettingsUi();
