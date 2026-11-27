@@ -40,7 +40,7 @@ const POLL_MS = 1500;
 const GPU_OPP_MHZ = [1100, 1086, 1072, 1058, 1045, 1031, 1017, 1003, 990, 976, 962, 948, 935, 921, 907, 893, 880, 868, 857, 846, 835, 823, 812, 801, 790, 778, 767, 756, 745, 733, 722, 711, 700, 674, 648, 622, 596, 570, 545, 519, 493, 467, 441, 415, 390];
 
 // ---------- saved settings (WebView storage + a file, so they survive) ----------
-const defaults = { little: 2300, big: 2500, lock: false, gpuPos: 44, gpuHeld: null };
+const defaults = { little: 2400, big: 2500, lock: false, gpuPos: 44, gpuHeld: null };
 let settings = { ...defaults };
 
 function loadLocal() {
