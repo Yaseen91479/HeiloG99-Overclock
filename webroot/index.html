@@ -102,7 +102,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
 .seg button{all:unset;box-sizing:border-box;flex:1;text-align:center;padding:12px 4px;border-radius:12px;border:1px solid var(--line);background:var(--card2);font-size:14px;cursor:pointer;transition:transform .12s,border-color .12s}
 .seg button:active:not([disabled]){transform:scale(.96)}
 .seg button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
-.seg button[disabled]{opacity:.35;cursor:default}
+.seg button[disabled]{opacity:.35;cursor:default}\n.seg button[hidden]{display:none}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pairbox{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
 .pairbox span{display:block;color:var(--muted);font-size:12px}
@@ -160,10 +160,10 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
   <div class="card">
     <h3>Maximum frequency</h3>
     <div class="slider-row"><span>Little</span><b id="little-val">--</b></div>
-    <input id="little-slider" type="range" min="500" max="2800" step="25" value="2300" aria-label="Little maximum">
+    <input id="little-slider" type="range" min="500" max="2800" step="25" value="2000" aria-label="Little maximum">
     <p class="warn" id="little-warn" hidden></p>
     <div class="slider-row"><span>Big</span><b id="big-val">--</b></div>
-    <input id="big-slider" type="range" min="725" max="3000" step="25" value="2500" aria-label="Big maximum">
+    <input id="big-slider" type="range" min="725" max="3000" step="25" value="2200" aria-label="Big maximum">
     <p class="warn" id="big-warn" hidden></p>
     <label class="check"><input id="cpu-lock" type="checkbox"> Lock frequency</label>
     <div class="actions"><button class="btn primary" id="cpu-apply" type="button">Apply</button><button class="btn ghost" id="cpu-restore" type="button">Restore stock</button></div>
@@ -198,6 +198,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
     <div class="bar"><i id="bar-zram"></i></div>
     <h3 style="margin:18px 0 8px">Compression algorithm</h3>
     <div class="seg" id="z-seg">
+      <button type="button" data-alg="lzo">LZO</button>
       <button type="button" data-alg="lz4">LZ4</button>
       <button type="button" data-alg="lz4-rle">LZ4-RLE</button>
       <button type="button" data-alg="zstd">ZSTD</button>
@@ -219,6 +220,6 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 4px}
 </section>
 
 </main>
-<script src="./app.js?v=4"></script>
+<script src="./app.js?v=5"></script>
 </body>
 </html>
