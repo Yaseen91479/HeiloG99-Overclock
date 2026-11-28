@@ -7,11 +7,20 @@
  *   apply=1          really change things (default 0 = dump only)
  *   little_khz=N     new max for policy0 (CPU0..5)   e.g. 2100000
  *   big_khz=N        new max for policy6 (CPU6..7)   e.g. 2300000
+ *   little_dv=N      extra voltage for the raised little row, unit = 10 uV
+ *                    (625 = 6.25 mV step, 5000 = +50 mV). 0 = unchanged.
+ *   big_dv=N         same for the big cluster
  *   a_get/a_put/a_qos  kernel symbol addresses, filled in by the loader
+ *
+ * LUT row format (32 bit):
+ *   bits 11:0   frequency in MHz
+ *   bits 28:12  voltage, unit 10 uV (step 625 = 6.25 mV)
+ *   bits 31:29  posdiv (not touched)
  */
 #define pr_fmt(fmt) "cpu_oc: " fmt
 
 #include <linux/module.h>
+#include <linux/kernel.h>
 #include <linux/cpufreq.h>
 #include <linux/pm_qos.h>
 #include <linux/plist.h>
@@ -21,16 +30,24 @@
 #define LUT_ROWS	32
 #define LUT_SIZE	0x120
 #define LUT_FREQ_MASK	0xfffU		/* MHz in bits 11:0 */
+#define LUT_VOLT_SHIFT	12
+#define LUT_VOLT_MASK	0x1ffffU	/* bits 28:12, unit 10 uV */
+#define VOLT_STEP	625		/* 6.25 mV */
+#define MAX_DV		10000		/* safety: at most +100 mV */
+#define MAX_VOLT	100000		/* safety: never above 1.00 V */
 #define MAX_REQ		16
 #define MAX_STEP_KHZ	800000		/* safety: refuse bigger jumps */
 
 static bool apply;
-static ulong little_khz, big_khz, a_get, a_put, a_qos, a_addn, a_remn;
+static ulong little_khz, big_khz, little_dv, big_dv;
+static ulong a_get, a_put, a_qos, a_addn, a_remn;
 static uint resets;		/* how many times something lowered a request back */
 module_param(resets, uint, 0444);
 module_param(apply, bool, 0444);
 module_param(little_khz, ulong, 0444);
 module_param(big_khz, ulong, 0444);
+module_param(little_dv, ulong, 0444);
+module_param(big_dv, ulong, 0444);
 module_param(a_get, ulong, 0444);
 module_param(a_put, ulong, 0444);
 module_param(a_qos, ulong, 0444);
@@ -49,6 +66,7 @@ struct dom {
 	int cpu;
 	phys_addr_t lut_pa;
 	ulong *new_khz;
+	ulong *dv;
 	struct cpufreq_policy *pol;
 	struct cpufreq_frequency_table *ent;
 	void __iomem *lut;
@@ -61,8 +79,8 @@ struct dom {
 };
 
 static struct dom doms[2] = {
-	{ .cpu = 0, .lut_pa = 0x11bc10, .new_khz = &little_khz, .lut_row = -1 },
-	{ .cpu = 6, .lut_pa = 0x11bd30, .new_khz = &big_khz,    .lut_row = -1 },
+	{ .cpu = 0, .lut_pa = 0x11bc10, .new_khz = &little_khz, .dv = &little_dv, .lut_row = -1 },
+	{ .cpu = 6, .lut_pa = 0x11bd30, .new_khz = &big_khz,    .dv = &big_dv,    .lut_row = -1 },
 };
 
 /* NOTE: walks the QoS list without the (private) pm_qos lock. Racy but short. */
@@ -166,10 +184,25 @@ static int dom_setup(struct dom *d)
 			u32 v = readl(d->lut + i * 4);
 
 			if ((v & LUT_FREQ_MASK) == d->old_khz / 1000) {
+				u32 nv = (v & ~LUT_FREQ_MASK) | (newk / 1000);
+				u32 volt = (v >> LUT_VOLT_SHIFT) & LUT_VOLT_MASK;
+				/* 625 is not a power of 2: use roundup(), not round_up() */
+				ulong dv = roundup(*d->dv, (ulong)VOLT_STEP);
+
+				if (dv > MAX_DV || (dv && volt + dv > MAX_VOLT)) {
+					pr_err("cpu%d: refusing dv=%lu (row volt=%u)\n",
+					       d->cpu, dv, volt);
+					return 0;
+				}
+				if (dv)
+					nv = (nv & ~(LUT_VOLT_MASK << LUT_VOLT_SHIFT)) |
+					     ((volt + dv) << LUT_VOLT_SHIFT);
 				d->lut_row = i;
 				d->lut_orig = v;
-				writel((v & ~LUT_FREQ_MASK) | (newk / 1000),
-				       d->lut + i * 4);
+				/* freq + volt in one 32-bit write */
+				writel(nv, d->lut + i * 4);
+				pr_info("cpu%d: lut row %d %08x -> %08x (volt %u -> %lu)\n",
+					d->cpu, i, v, nv, volt, volt + dv);
 				break;
 			}
 		}
@@ -221,7 +254,8 @@ static int __init oc_init(void)
 	}
 	INIT_WORK(&fix_work, fix_fn);
 
-	pr_info("apply=%d little=%lu big=%lu\n", apply, little_khz, big_khz);
+	pr_info("apply=%d little=%lu big=%lu little_dv=%lu big_dv=%lu\n",
+		apply, little_khz, big_khz, little_dv, big_dv);
 	for (i = 0; i < 2; i++)
 		dom_setup(&doms[i]);
 	return 0;
